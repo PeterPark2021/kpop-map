@@ -1,4 +1,4 @@
-﻿import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '../lib/firebase';
 import { TourEvent, TourNewsFact } from '../types/types';
 import { initialBigBangTourEvents, sampleNewsFacts } from '../data/initialData';
@@ -21,7 +21,7 @@ class TourService {
           callback(this.mockEvents);
         }
       }, (error) => {
-        console.error('[Firestore] Events listener error:', error);
+        console.error('[Firestore] Events error, falling back:', error);
         callback(this.mockEvents);
       });
       return unsubscribe;
@@ -36,9 +36,13 @@ class TourService {
 
   public async updateEventStatus(eventId: string, status: TourEvent['status']) {
     if (isFirebaseConfigured && db) {
-      const docRef = doc(db, 'events', eventId);
-      await updateDoc(docRef, { status });
-      return;
+      try {
+        const docRef = doc(db, 'events', eventId);
+        await updateDoc(docRef, { status });
+        return;
+      } catch (err) {
+        console.warn('Firestore update failed, updating local state:', err);
+      }
     }
 
     this.mockEvents = this.mockEvents.map(e => e.eventId === eventId ? { ...e, status } : e);
@@ -46,22 +50,33 @@ class TourService {
   }
 
   public subscribeToNewsFacts(artistId: string, lang: string, callback: NewsUpdateCallback): () => void {
+    const targetLang = lang === 'sea' ? 'en' : lang;
+
+    const getLocalFallback = () => {
+      const filtered = sampleNewsFacts.filter(f => f.artistId === artistId && f.language === targetLang);
+      return filtered.length > 0 ? filtered : sampleNewsFacts;
+    };
+
     if (isFirebaseConfigured && db) {
       const q = query(
         collection(db, 'newsFacts'),
         where('artistId', '==', artistId),
-        where('language', '==', lang)
+        where('language', '==', targetLang)
       );
+
       return onSnapshot(q, (snapshot) => {
-        const facts = snapshot.docs.map(d => d.data() as TourNewsFact);
-        callback(facts);
+        if (!snapshot.empty) {
+          const facts = snapshot.docs.map(d => d.data() as TourNewsFact);
+          callback(facts);
+        } else {
+          callback(getLocalFallback());
+        }
+      }, () => {
+        callback(getLocalFallback());
       });
     }
 
-    const filtered = sampleNewsFacts.filter(
-      f => f.artistId === artistId && (f.language === lang || f.language === 'ko')
-    );
-    callback(filtered);
+    callback(getLocalFallback());
     return () => {};
   }
 }

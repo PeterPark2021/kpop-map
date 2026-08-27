@@ -1,4 +1,4 @@
-﻿export type TourStatus = 'scheduled' | 'ticketOpen' | 'inProgress' | 'completed';
+export type TourStatus = 'scheduled' | 'ticketOpen' | 'inProgress' | 'completed';
 export type LanguageCode = 'ko' | 'en' | 'ja' | 'zh' | 'sea';
 
 export interface LocalizedString {
@@ -23,7 +23,7 @@ export interface TourEvent {
   country: string;
   venueName: string;
   coordinates: Coordinates;
-  eventDate: string; // ISO-8601
+  eventDate: string;
   showCount?: number;
   ticketOpenDate?: string;
   ticketUrl?: string;
