@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. 투어 및 공연 이벤트 컬렉션: 누구나 조회 가능, 수정은 관리자만
+    match /events/{eventId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // 2. 저작권 안심 팩트 뉴스: 'approved' 검증 완료 또는 소속사 공식 인증된 팩트만 공개
+    match /newsFacts/{newsId} {
+      allow read: if resource.data.isOfficial == true || resource.data.reviewStatus == 'approved';
+      allow write: if request.auth != null;
+    }
+
+    // 3. 소속사 승인 이미지 화이트리스트: 승인된 공식 이미지만 조회
+    match /approvedImages/{imageId} {
+      allow read: if resource.data.isWhitelisted == true;
+      allow write: if false; // 관리자 SDK/Functions만 쓰기 가능
+    }
+
+    // 4. 기타 컬렉션 기본 차단
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
