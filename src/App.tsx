@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { gdArtistProfile, sampleAuditLogs } from './data/initialData';
+import { useState, useEffect } from 'react';
+import { gdArtistProfile, sampleNewsFacts, sampleAuditLogs } from './data/initialData';
 import { useTourEvents } from './hooks/useTourEvents';
 import { useNewsFacts } from './hooks/useNewsFacts';
 import { useLanguage } from './hooks/useLanguage';
@@ -17,10 +17,23 @@ export default function App() {
   const [viewMode, setViewMode] = useState<'anchor' | 'all'>('anchor');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // 관리자 대시보드 상태
+  // 관리자 대시보드 상태 (sampleNewsFacts로 즉시 초기화)
   const [isAdminOpen, setIsAdminOpen] = useState(false);
-  const [allNews, setAllNews] = useState<TourNewsFact[]>(news);
-  const [auditLogs, setAuditLogs] = useState<PipelineAuditLog[]>(sampleAuditLogs);
+  const [allNews, setAllNews] = useState<TourNewsFact[]>(sampleNewsFacts);
+  const [auditLogs] = useState<PipelineAuditLog[]>(sampleAuditLogs);
+
+  // 훅에서 새로운 뉴스가 들어올 때 상태 동기화 (기존 검수 변경점 유지)
+  useEffect(() => {
+    if (news.length > 0) {
+      setAllNews((prev) => {
+        const reviewStatusMap = new Map(prev.map((n) => [n.newsId, n.reviewStatus]));
+        return news.map((n) => ({
+          ...n,
+          reviewStatus: reviewStatusMap.get(n.newsId) || n.reviewStatus || 'approved'
+        }));
+      });
+    }
+  }, [news]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -59,8 +72,11 @@ export default function App() {
     showToast('✕ 해당 뉴스 팩트가 반려 처리되었습니다.');
   };
 
-  // 공개 피드에는 승인된 팩트만 필터링
-  const approvedNews = allNews.filter((n) => n.reviewStatus === 'approved');
+  // 현재 언어에 맞는 뉴스 중 '승인된(approved)' 팩트만 필터링
+  const targetLang = currentLang === 'sea' ? 'en' : currentLang;
+  const approvedNews = allNews.filter(
+    (n) => n.reviewStatus === 'approved' && (n.language === targetLang || n.language === 'ko')
+  );
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '28px 20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -87,7 +103,7 @@ export default function App() {
       {/* 관리자 모달 */}
       {isAdminOpen && (
         <AdminDashboard
-          newsList={allNews.length > 0 ? allNews : news}
+          newsList={allNews}
           auditLogs={auditLogs}
           onApprove={handleApproveNews}
           onReject={handleRejectNews}
@@ -119,7 +135,7 @@ export default function App() {
               cursor: 'pointer'
             }}
           >
-            ⚙️ 관리자 콘솔
+            ⚙️ 관리자 콘솔 ({allNews.filter(n => n.reviewStatus === 'pending').length})
           </button>
           <LanguageSwitcher currentLang={currentLang} onLanguageChange={setCurrentLang} />
         </div>
@@ -139,7 +155,7 @@ export default function App() {
         onSelectEvent={handleStatusToggle}
       />
 
-      <NewsFactFeed news={approvedNews.length > 0 ? approvedNews : news} />
+      <NewsFactFeed news={approvedNews} />
     </div>
   );
 }
