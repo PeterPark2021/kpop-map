@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { allArtistsCatalog, btsTourEvents, blackpinkTourEvents } from './data/artistsCatalog';
+import { allArtistsCatalog, btsTourEvents, blackpinkTourEvents, seventeenTourEvents, strayKidsTourEvents } from './data/artistsCatalog';
 import { initialBigBangTourEvents, sampleNewsFacts, sampleAuditLogs } from './data/initialData';
 import { useTourEvents } from './hooks/useTourEvents';
 import { useLanguage } from './hooks/useLanguage';
@@ -27,7 +27,6 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // 선택된 아티스트 프로필 & 투어 데이터 동적 매핑
   const currentProfile = useMemo(() => {
     return allArtistsCatalog.find(a => a.artistId === selectedArtistId) || allArtistsCatalog[0];
   }, [selectedArtistId]);
@@ -35,6 +34,8 @@ export default function App() {
   const currentEvents = useMemo(() => {
     if (selectedArtistId === 'bts') return btsTourEvents;
     if (selectedArtistId === 'blackpink') return blackpinkTourEvents;
+    if (selectedArtistId === 'seventeen') return seventeenTourEvents;
+    if (selectedArtistId === 'stray-kids') return strayKidsTourEvents;
     return gdEvents.length > 0 ? gdEvents : initialBigBangTourEvents;
   }, [selectedArtistId, gdEvents]);
 
@@ -70,7 +71,9 @@ export default function App() {
 
   const targetLang = currentLang === 'sea' ? 'en' : currentLang;
   const approvedNews = allNews.filter(
-    (n) => n.reviewStatus === 'approved' && n.language === targetLang
+    (n) => n.reviewStatus === 'approved' &&
+           (n.artistId === selectedArtistId || selectedArtistId === 'bigbang-gd') &&
+           (n.language === targetLang || n.language === 'ko')
   );
 
   const pendingCount = allNews.filter((n) => n.reviewStatus === 'pending').length;
@@ -113,7 +116,7 @@ export default function App() {
             K-POP TOUR PULSE
           </h1>
           <span style={{ fontSize: '12px', color: '#22c55e', fontWeight: 600 }}>
-            ● Multi-Artist Global World Tour Network
+            ● 5대 메가 아티스트 글로벌 월드투어 네트워크 (LIVE)
           </span>
         </div>
 
@@ -137,7 +140,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* Tier-1 아티스트 셀렉터 바 (GD / BTS / BLACKPINK) */}
+      {/* 5대 아티스트 셀렉터 바 */}
       <ArtistSelector
         artists={allArtistsCatalog}
         selectedArtistId={selectedArtistId}

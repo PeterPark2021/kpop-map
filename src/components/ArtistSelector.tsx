@@ -9,6 +9,17 @@ interface Props {
 }
 
 export const ArtistSelector: React.FC<Props> = ({ artists, selectedArtistId, lang, onSelectArtist }) => {
+  const getBadgeColor = (artistId: string) => {
+    switch (artistId) {
+      case 'bigbang-gd': return '#ffd700'; // Gold
+      case 'bts': return '#a855f7';        // Purple
+      case 'blackpink': return '#ec4899';  // Pink
+      case 'seventeen': return '#38bdf8';  // Rose Quartz & Serenity Sky Blue
+      case 'stray-kids': return '#ef4444'; // Crimson Neon Red
+      default: return '#eab308';
+    }
+  };
+
   return (
     <div style={{
       display: 'flex',
@@ -19,12 +30,7 @@ export const ArtistSelector: React.FC<Props> = ({ artists, selectedArtistId, lan
     }}>
       {artists.map((artist) => {
         const isSelected = artist.artistId === selectedArtistId;
-        const badgeColor =
-          artist.artistId === 'bigbang-gd'
-            ? '#ffd700'
-            : artist.artistId === 'bts'
-            ? '#a855f7'
-            : '#ec4899';
+        const badgeColor = getBadgeColor(artist.artistId);
 
         return (
           <button
@@ -43,7 +49,7 @@ export const ArtistSelector: React.FC<Props> = ({ artists, selectedArtistId, lan
               fontWeight: 700,
               fontSize: '14px',
               whiteSpace: 'nowrap',
-              boxShadow: isSelected ? `0 0 15px ${badgeColor}33` : 'none',
+              boxShadow: isSelected ? `0 0 16px ${badgeColor}44` : 'none',
               transition: 'all 0.15s ease'
             }}
           >
