@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { gdArtistProfile, sampleAuditLogs } from './data/initialData';
+import { gdArtistProfile, sampleNewsFacts, sampleAuditLogs } from './data/initialData';
 import { useTourEvents } from './hooks/useTourEvents';
-import { useNewsFacts } from './hooks/useNewsFacts';
 import { useLanguage } from './hooks/useLanguage';
-import { tourService } from './services/tourService';
 import { GdAnchorHero } from './components/GdAnchorHero';
 import { WorldTourMap } from './components/WorldTourMap';
 import { NewsFactFeed } from './components/NewsFactFeed';
@@ -14,12 +12,12 @@ import { TourEvent, TourNewsFact, PipelineAuditLog } from './types/types';
 export default function App() {
   const { currentLang, setCurrentLang } = useLanguage('ko');
   const { events, updateStatus } = useTourEvents();
-  const { news } = useNewsFacts('bigbang-gd', currentLang);
   const [viewMode, setViewMode] = useState<'anchor' | 'all'>('anchor');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [allNews, setAllNews] = useState<TourNewsFact[]>(sampleNewsFacts);
   const [auditLogs] = useState<PipelineAuditLog[]>(sampleAuditLogs);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -42,19 +40,27 @@ export default function App() {
     await updateStatus(selectedEv.eventId, nextStatus);
   };
 
-  const handleApproveNews = async (newsId: string) => {
-    await tourService.updateNewsReviewStatus(newsId, 'approved');
+  const handleApproveNews = (newsId: string) => {
+    setAllNews((prev) =>
+      prev.map((n) => (n.newsId === newsId ? { ...n, reviewStatus: 'approved' } : n))
+    );
     showToast('✓ 해당 뉴스 팩트가 승인되어 공개 피드에 노출됩니다!');
   };
 
-  const handleRejectNews = async (newsId: string, reason: string) => {
-    await tourService.updateNewsReviewStatus(newsId, 'rejected', reason);
+  const handleRejectNews = (newsId: string, reason: string) => {
+    setAllNews((prev) =>
+      prev.map((n) => (n.newsId === newsId ? { ...n, reviewStatus: 'rejected', rejectionReason: reason } : n))
+    );
     showToast('✕ 해당 뉴스 팩트가 반려 처리되었습니다.');
   };
 
-  const allNews = tourService.getAllNews();
+  // 선택된 언어에 정확히 매칭되는 '승인된' 뉴스만 필터링 (SEA는 EN 매핑)
+  const targetLang = currentLang === 'sea' ? 'en' : currentLang;
+  const approvedNews = allNews.filter(
+    (n) => n.reviewStatus === 'approved' && n.language === targetLang
+  );
+
   const pendingCount = allNews.filter((n) => n.reviewStatus === 'pending').length;
-  const approvedNews = news.filter((n) => n.reviewStatus === 'approved');
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '28px 20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -132,7 +138,7 @@ export default function App() {
         onSelectEvent={handleStatusToggle}
       />
 
-      <NewsFactFeed news={approvedNews.length > 0 ? approvedNews : news} />
+      <NewsFactFeed news={approvedNews} />
     </div>
   );
 }
