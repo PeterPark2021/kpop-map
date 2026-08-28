@@ -1,4 +1,4 @@
-import { TourEvent, TourNewsFact, ArtistProfile } from '../types/types';
+import { TourEvent, TourNewsFact, PipelineAuditLog, ArtistProfile } from '../types/types';
 
 export const gdArtistProfile: ArtistProfile = {
   artistId: 'bigbang-gd',
@@ -55,7 +55,8 @@ export const sampleNewsFacts: TourNewsFact[] = [
     sourceName: '갤럭시코퍼레이션 공식 공지',
     sourceUrl: 'https://galaxycorp.example.com',
     isOfficial: true,
-    publishedAt: '2026-03-01T10:00:00Z'
+    publishedAt: '2026-03-01T10:00:00Z',
+    reviewStatus: 'approved'
   },
   {
     newsId: 'fact-002',
@@ -70,7 +71,8 @@ export const sampleNewsFacts: TourNewsFact[] = [
     sourceName: '日本公式プレスリリース',
     sourceUrl: 'https://bigbang-jp.example.com',
     isOfficial: true,
-    publishedAt: '2026-03-02T11:00:00Z'
+    publishedAt: '2026-03-02T11:00:00Z',
+    reviewStatus: 'approved'
   },
   {
     newsId: 'fact-003',
@@ -86,7 +88,8 @@ export const sampleNewsFacts: TourNewsFact[] = [
     sourceName: 'Live Nation Global Official',
     sourceUrl: 'https://livenation.example.com',
     isOfficial: true,
-    publishedAt: '2026-03-03T12:00:00Z'
+    publishedAt: '2026-03-03T12:00:00Z',
+    reviewStatus: 'approved'
   },
   {
     newsId: 'fact-004',
@@ -101,6 +104,60 @@ export const sampleNewsFacts: TourNewsFact[] = [
     sourceName: '台灣主辦單位官方公告',
     sourceUrl: 'https://tixcraft.example.com',
     isOfficial: true,
-    publishedAt: '2026-03-04T10:00:00Z'
+    publishedAt: '2026-03-04T10:00:00Z',
+    reviewStatus: 'approved'
+  },
+  {
+    newsId: 'fact-pending-001',
+    artistId: 'bigbang-gd',
+    tourId: 'bigbang-20th-tour',
+    language: 'ko',
+    title: '[검수 대기] 방콕 및 하노이 스타디움 추가 회차 검토 속보',
+    factSummary: [
+      '동남아 2개 도시(방콕 Impact Arena, 하노이 My Dinh) 1회차씩 추가 개최 검토 중.',
+      '현지 주최사 최종 인허가 완료 시 4월 중 공식 공지 예정.'
+    ],
+    sourceName: 'K-Pop Insider Asia',
+    sourceUrl: 'https://kpop-insider.example.com',
+    isOfficial: false,
+    publishedAt: '2026-03-05T09:00:00Z',
+    reviewStatus: 'pending'
+  }
+];
+
+export const sampleAuditLogs: PipelineAuditLog[] = [
+  {
+    logId: 'audit-001',
+    timestamp: '2026-03-05T09:12:30Z',
+    articleTitle: '빅뱅 2026 월드투어 방콕 공연 일정 루머',
+    sourceUrl: 'https://unverified-blog.example.com/post/123',
+    status: 'BLOCKED_NGRAM',
+    ngramMatchCount: 1,
+    detectedOverlapSnippet: '방콕 공연 티켓 예매가 3월 15일 오후 8시 시작됩니다',
+    detail: '원문 8연속 단어 일치 감지됨 (표절 방지 알고리즘에 의해 차단)'
+  },
+  {
+    logId: 'audit-002',
+    timestamp: '2026-03-05T09:12:35Z',
+    articleTitle: '빅뱅 2026 월드투어 방콕 공연 일정 루머',
+    sourceUrl: 'https://unverified-blog.example.com/post/123',
+    status: 'RETRY_TRIGGERED',
+    detail: '표절 탐지 후 Gemini AI에 사실관계 자체 문장 재구성 재시도 요청'
+  },
+  {
+    logId: 'audit-003',
+    timestamp: '2026-03-05T09:12:40Z',
+    articleTitle: '빅뱅 2026 월드투어 방콕 공연 일정 루머',
+    sourceUrl: 'https://unverified-blog.example.com/post/123',
+    status: 'SUCCESS',
+    detail: '재구성 완료: 8-gram 일치 0건 확인 -> Stage 6 검수 대기(pending) 등록'
+  },
+  {
+    logId: 'audit-004',
+    timestamp: '2026-03-04T15:00:00Z',
+    articleTitle: 'BIGBANG 2026 World Tour Taipei Official Press',
+    sourceUrl: 'https://tixcraft.example.com',
+    status: 'SUCCESS',
+    detail: '공식 화이트리스트 도메인 인증 + n-gram 검증 통과 (isOfficial=true)'
   }
 ];
