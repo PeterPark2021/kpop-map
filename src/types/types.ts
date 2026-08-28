@@ -1,5 +1,6 @@
 export type TourStatus = 'scheduled' | 'ticketOpen' | 'inProgress' | 'completed';
 export type LanguageCode = 'ko' | 'en' | 'ja' | 'zh' | 'sea';
+export type ReviewStatus = 'pending' | 'approved' | 'rejected';
 
 export interface LocalizedString {
   ko: string;
@@ -42,6 +43,19 @@ export interface TourNewsFact {
   sourceUrl: string;
   isOfficial: boolean;
   publishedAt: string;
+  reviewStatus: ReviewStatus;
+  rejectionReason?: string;
+}
+
+export interface PipelineAuditLog {
+  logId: string;
+  timestamp: string;
+  articleTitle: string;
+  sourceUrl: string;
+  status: 'SUCCESS' | 'BLOCKED_NGRAM' | 'RETRY_TRIGGERED' | 'INVALID_SOURCE';
+  ngramMatchCount?: number;
+  detectedOverlapSnippet?: string;
+  detail: string;
 }
 
 export interface ArtistProfile {

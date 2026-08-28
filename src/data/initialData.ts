@@ -1,4 +1,4 @@
-import { TourEvent, TourNewsFact, ArtistProfile } from '../types/types';
+import { TourEvent, TourNewsFact, PipelineAuditLog, ArtistProfile } from '../types/types';
 
 export const gdArtistProfile: ArtistProfile = {
   artistId: 'bigbang-gd',
@@ -41,39 +41,77 @@ export const initialBigBangTourEvents: TourEvent[] = [
 ];
 
 export const sampleNewsFacts: TourNewsFact[] = [
+  // 🇰🇷 한국어 (KO)
   {
-    newsId: 'fact-001',
+    newsId: 'fact-ko-001',
     artistId: 'bigbang-gd',
     tourId: 'bigbang-20th-tour',
     language: 'ko',
-    title: '빅뱅 20주년 월드투어 공식 티켓 오픈 공지',
+    title: '빅뱅 20주년 월드투어 공식 티켓 예매 일정 안내',
     factSummary: [
-      '고양 종합운동장 2회 공연 티켓 예매가 3월 15일 오후 8시 시작됩니다.',
-      'VIP 패키지에는 사운드체크 입장권 및 공식 MD가 포함됩니다.',
+      '고양 종합운동장 개막 2회 공연 티켓 예매가 3월 15일 오후 8시 시작됩니다.',
+      'VIP 패키지에는 사운드체크 입장권 및 공식 한정판 MD가 포함됩니다.',
       '해외 17개 도시 상세 일정은 공식 홈페이지를 통해 순차 공개됩니다.'
     ],
     sourceName: '갤럭시코퍼레이션 공식 공지',
     sourceUrl: 'https://galaxycorp.example.com',
     isOfficial: true,
-    publishedAt: '2026-03-01T10:00:00Z'
+    publishedAt: '2026-03-01T10:00:00Z',
+    reviewStatus: 'approved'
   },
   {
-    newsId: 'fact-002',
+    newsId: 'fact-ko-002',
     artistId: 'bigbang-gd',
     tourId: 'bigbang-20th-tour',
-    language: 'ja',
-    title: 'BIGBANG 2026年日本4大ドームツアー開催決定',
+    language: 'ko',
+    title: '고양 개막 공연 좌석 등급 및 사운드체크 VIP 안내',
     factSummary: [
-      '大阪・名古屋・東京・福岡の4大ドームで全8公演を実施。',
-      '日本ファンクラブ先行予約受付は4月1日より開始予定。'
+      '좌석 등급: VIP석 198,000원, R석 154,000원, S석 132,000원.',
+      'VIP 관객은 본 공연 3시간 전 사전 리허설 사운드체크 관람이 가능합니다.',
+      '전 좌석 1인 2매 예매 제한 및 모바일 신분증 본인 확인이 진행됩니다.'
     ],
-    sourceName: '日本公式プレスリリース',
-    sourceUrl: 'https://bigbang-jp.example.com',
+    sourceName: 'NOL 티켓 공식 예매처',
+    sourceUrl: 'https://nolticket.example.com',
     isOfficial: true,
-    publishedAt: '2026-03-02T11:00:00Z'
+    publishedAt: '2026-03-02T14:00:00Z',
+    reviewStatus: 'approved'
   },
   {
-    newsId: 'fact-003',
+    newsId: 'fact-ko-003',
+    artistId: 'bigbang-gd',
+    tourId: 'bigbang-20th-tour',
+    language: 'ko',
+    title: '지드래곤 솔로 신곡 무대 월드투어 세트리스트 포함 확정',
+    factSummary: [
+      '2026 월드투어 세트리스트에 GD 신곡 및 빅뱅 완전체 히트곡 25곡 이상 편성.',
+      '전체 공연 러닝타임은 약 160분으로 인터미션 없이 진행됩니다.'
+    ],
+    sourceName: '연예투데이 공식 보도자료',
+    sourceUrl: 'https://news.example.com',
+    isOfficial: true,
+    publishedAt: '2026-03-03T11:00:00Z',
+    reviewStatus: 'approved'
+  },
+  {
+    newsId: 'fact-pending-001',
+    artistId: 'bigbang-gd',
+    tourId: 'bigbang-20th-tour',
+    language: 'ko',
+    title: '방콕 및 하노이 스타디움 추가 회차 검토 속보',
+    factSummary: [
+      '동남아 2개 도시(방콕 Impact Arena, 하노이 My Dinh) 1회차씩 추가 개최 검토 중.',
+      '현지 주최사 최종 인허가 완료 시 4월 중 공식 공지 예정.'
+    ],
+    sourceName: 'K-Pop Insider Asia',
+    sourceUrl: 'https://kpop-insider.example.com',
+    isOfficial: false,
+    publishedAt: '2026-03-05T09:00:00Z',
+    reviewStatus: 'pending'
+  },
+
+  // 🇺🇸 영어 (EN)
+  {
+    newsId: 'fact-en-001',
     artistId: 'bigbang-gd',
     tourId: 'bigbang-20th-tour',
     language: 'en',
@@ -86,10 +124,79 @@ export const sampleNewsFacts: TourNewsFact[] = [
     sourceName: 'Live Nation Global Official',
     sourceUrl: 'https://livenation.example.com',
     isOfficial: true,
-    publishedAt: '2026-03-03T12:00:00Z'
+    publishedAt: '2026-03-03T12:00:00Z',
+    reviewStatus: 'approved'
   },
   {
-    newsId: 'fact-004',
+    newsId: 'fact-en-002',
+    artistId: 'bigbang-gd',
+    tourId: 'bigbang-20th-tour',
+    language: 'en',
+    title: 'New York Barclays Center 2-Day Show Details Released',
+    factSummary: [
+      'Shows scheduled for May 15 & 16 at Barclays Center, Brooklyn.',
+      'General ticket sales begin April 12 via Ticketmaster.'
+    ],
+    sourceName: 'Barclays Center Press',
+    sourceUrl: 'https://barclayscenter.example.com',
+    isOfficial: true,
+    publishedAt: '2026-03-04T10:00:00Z',
+    reviewStatus: 'approved'
+  },
+  {
+    newsId: 'fact-en-003',
+    artistId: 'bigbang-gd',
+    tourId: 'bigbang-20th-tour',
+    language: 'en',
+    title: 'London The O2 Arena & Paris Accor Arena Tour Schedule',
+    factSummary: [
+      'Paris Accor Arena show on May 26; London O2 Arena show on June 2.',
+      'Presale for European fan club members starts on April 8.'
+    ],
+    sourceName: 'AEG Presents UK & Europe',
+    sourceUrl: 'https://aegpresents.example.com',
+    isOfficial: true,
+    publishedAt: '2026-03-05T08:00:00Z',
+    reviewStatus: 'approved'
+  },
+
+  // 🇯🇵 일본어 (JA)
+  {
+    newsId: 'fact-ja-001',
+    artistId: 'bigbang-gd',
+    tourId: 'bigbang-20th-tour',
+    language: 'ja',
+    title: 'BIGBANG 2026年日本4大ドームツアー開催決定',
+    factSummary: [
+      '大阪・名古屋・東京・福岡の4大ドームで全8公演を実施。',
+      '日本ファンクラブ先行予約受付は4月1日より開始予定。'
+    ],
+    sourceName: '日本公式プレスリリース',
+    sourceUrl: 'https://bigbang-jp.example.com',
+    isOfficial: true,
+    publishedAt: '2026-03-02T11:00:00Z',
+    reviewStatus: 'approved'
+  },
+  {
+    newsId: 'fact-ja-002',
+    artistId: 'bigbang-gd',
+    tourId: 'bigbang-20th-tour',
+    language: 'ja',
+    title: '東京ドーム・京セラドーム大阪 チケット販売概要発表',
+    factSummary: [
+      '京セラドーム大阪（8月1-2日）、東京ドーム（8月15-16日）開催。',
+      'VIP席にはリハーサル観覧チケットおよび限定プレミアムグッズが付属します。'
+    ],
+    sourceName: 'ローソンチケット公式',
+    sourceUrl: 'https://l-tike.example.com',
+    isOfficial: true,
+    publishedAt: '2026-03-04T12:00:00Z',
+    reviewStatus: 'approved'
+  },
+
+  // 🇹🇼 번체자 (ZH)
+  {
+    newsId: 'fact-zh-001',
     artistId: 'bigbang-gd',
     tourId: 'bigbang-20th-tour',
     language: 'zh',
@@ -101,6 +208,52 @@ export const sampleNewsFacts: TourNewsFact[] = [
     sourceName: '台灣主辦單位官方公告',
     sourceUrl: 'https://tixcraft.example.com',
     isOfficial: true,
-    publishedAt: '2026-03-04T10:00:00Z'
+    publishedAt: '2026-03-04T10:00:00Z',
+    reviewStatus: 'approved'
+  },
+  {
+    newsId: 'fact-zh-002',
+    artistId: 'bigbang-gd',
+    tourId: 'bigbang-20th-tour',
+    language: 'zh',
+    title: '台北大巨蛋場次座位圖與VIP套票權益公開',
+    factSummary: [
+      '6月13-14日台北大巨蛋演出，全場實名制認證入場。',
+      'VIP套票包含專屬入場通道、Soundcheck彩排觀賞及紀念周邊。'
+    ],
+    sourceName: 'Live Nation Taiwan',
+    sourceUrl: 'https://livenation.tw.example.com',
+    isOfficial: true,
+    publishedAt: '2026-03-05T14:00:00Z',
+    reviewStatus: 'approved'
+  }
+];
+
+export const sampleAuditLogs: PipelineAuditLog[] = [
+  {
+    logId: 'audit-001',
+    timestamp: '2026-03-05T09:12:30Z',
+    articleTitle: '빅뱅 2026 월드투어 방콕 공연 일정 루머',
+    sourceUrl: 'https://unverified-blog.example.com/post/123',
+    status: 'BLOCKED_NGRAM',
+    ngramMatchCount: 1,
+    detectedOverlapSnippet: '방콕 공연 티켓 예매가 3월 15일 오후 8시 시작됩니다',
+    detail: '원문 8연속 단어 일치 감지됨 (표절 방지 알고리즘에 의해 차단)'
+  },
+  {
+    logId: 'audit-002',
+    timestamp: '2026-03-05T09:12:35Z',
+    articleTitle: '빅뱅 2026 월드투어 방콕 공연 일정 루머',
+    sourceUrl: 'https://unverified-blog.example.com/post/123',
+    status: 'RETRY_TRIGGERED',
+    detail: '표절 탐지 후 Gemini AI에 사실관계 자체 문장 재구성 재시도 요청'
+  },
+  {
+    logId: 'audit-003',
+    timestamp: '2026-03-05T09:12:40Z',
+    articleTitle: '빅뱅 2026 월드투어 방콕 공연 일정 루머',
+    sourceUrl: 'https://unverified-blog.example.com/post/123',
+    status: 'SUCCESS',
+    detail: '재구성 완료: 8-gram 일치 0건 확인 -> Stage 6 검수 대기(pending) 등록'
   }
 ];
