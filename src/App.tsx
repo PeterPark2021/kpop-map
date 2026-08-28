@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
-import { gdArtistProfile, sampleNewsFacts, sampleAuditLogs } from './data/initialData';
+import { useState } from 'react';
+import { gdArtistProfile, sampleAuditLogs } from './data/initialData';
 import { useTourEvents } from './hooks/useTourEvents';
 import { useNewsFacts } from './hooks/useNewsFacts';
 import { useLanguage } from './hooks/useLanguage';
+import { tourService } from './services/tourService';
 import { GdAnchorHero } from './components/GdAnchorHero';
 import { WorldTourMap } from './components/WorldTourMap';
 import { NewsFactFeed } from './components/NewsFactFeed';
@@ -17,23 +18,8 @@ export default function App() {
   const [viewMode, setViewMode] = useState<'anchor' | 'all'>('anchor');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // 관리자 대시보드 상태 (sampleNewsFacts로 즉시 초기화)
   const [isAdminOpen, setIsAdminOpen] = useState(false);
-  const [allNews, setAllNews] = useState<TourNewsFact[]>(sampleNewsFacts);
   const [auditLogs] = useState<PipelineAuditLog[]>(sampleAuditLogs);
-
-  // 훅에서 새로운 뉴스가 들어올 때 상태 동기화 (기존 검수 변경점 유지)
-  useEffect(() => {
-    if (news.length > 0) {
-      setAllNews((prev) => {
-        const reviewStatusMap = new Map(prev.map((n) => [n.newsId, n.reviewStatus]));
-        return news.map((n) => ({
-          ...n,
-          reviewStatus: reviewStatusMap.get(n.newsId) || n.reviewStatus || 'approved'
-        }));
-      });
-    }
-  }, [news]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -56,27 +42,19 @@ export default function App() {
     await updateStatus(selectedEv.eventId, nextStatus);
   };
 
-  // Stage 6 검수 승인 처리
-  const handleApproveNews = (newsId: string) => {
-    setAllNews((prev) =>
-      prev.map((n) => (n.newsId === newsId ? { ...n, reviewStatus: 'approved' } : n))
-    );
+  const handleApproveNews = async (newsId: string) => {
+    await tourService.updateNewsReviewStatus(newsId, 'approved');
     showToast('✓ 해당 뉴스 팩트가 승인되어 공개 피드에 노출됩니다!');
   };
 
-  // Stage 6 검수 반려 처리
-  const handleRejectNews = (newsId: string, reason: string) => {
-    setAllNews((prev) =>
-      prev.map((n) => (n.newsId === newsId ? { ...n, reviewStatus: 'rejected', rejectionReason: reason } : n))
-    );
+  const handleRejectNews = async (newsId: string, reason: string) => {
+    await tourService.updateNewsReviewStatus(newsId, 'rejected', reason);
     showToast('✕ 해당 뉴스 팩트가 반려 처리되었습니다.');
   };
 
-  // 현재 언어에 맞는 뉴스 중 '승인된(approved)' 팩트만 필터링
-  const targetLang = currentLang === 'sea' ? 'en' : currentLang;
-  const approvedNews = allNews.filter(
-    (n) => n.reviewStatus === 'approved' && (n.language === targetLang || n.language === 'ko')
-  );
+  const allNews = tourService.getAllNews();
+  const pendingCount = allNews.filter((n) => n.reviewStatus === 'pending').length;
+  const approvedNews = news.filter((n) => n.reviewStatus === 'approved');
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '28px 20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -100,7 +78,6 @@ export default function App() {
         </div>
       )}
 
-      {/* 관리자 모달 */}
       {isAdminOpen && (
         <AdminDashboard
           newsList={allNews}
@@ -135,7 +112,7 @@ export default function App() {
               cursor: 'pointer'
             }}
           >
-            ⚙️ 관리자 콘솔 ({allNews.filter(n => n.reviewStatus === 'pending').length})
+            ⚙️ 관리자 콘솔 ({pendingCount})
           </button>
           <LanguageSwitcher currentLang={currentLang} onLanguageChange={setCurrentLang} />
         </div>
@@ -155,7 +132,7 @@ export default function App() {
         onSelectEvent={handleStatusToggle}
       />
 
-      <NewsFactFeed news={approvedNews} />
+      <NewsFactFeed news={approvedNews.length > 0 ? approvedNews : news} />
     </div>
   );
 }

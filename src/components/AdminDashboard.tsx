@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TourNewsFact, PipelineAuditLog } from '../types/types';
 
 interface Props {
@@ -18,8 +18,30 @@ export const AdminDashboard: React.FC<Props> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'review' | 'audit'>('review');
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [localNews, setLocalNews] = useState<TourNewsFact[]>(newsList);
 
-  const filteredNews = newsList.filter((n) => {
+  useEffect(() => {
+    setLocalNews(newsList);
+  }, [newsList]);
+
+  const handleLocalApprove = (newsId: string) => {
+    // 1. 대시보드 내부 상태 즉시 갱신
+    setLocalNews(prev =>
+      prev.map(n => (n.newsId === newsId ? { ...n, reviewStatus: 'approved' } : n))
+    );
+    // 2. 부모 및 서비스 계층으로 전파
+    onApprove(newsId);
+  };
+
+  const handleLocalReject = (newsId: string, reason: string) => {
+    setLocalNews(prev =>
+      prev.map(n => (n.newsId === newsId ? { ...n, reviewStatus: 'rejected', rejectionReason: reason } : n))
+    );
+    onReject(newsId, reason);
+  };
+
+  const pendingCount = localNews.filter(n => n.reviewStatus === 'pending').length;
+  const filteredNews = localNews.filter((n) => {
     if (filterStatus === 'all') return true;
     return n.reviewStatus === filterStatus;
   });
@@ -99,7 +121,7 @@ export const AdminDashboard: React.FC<Props> = ({
               cursor: 'pointer'
             }}
           >
-            📋 뉴스 팩트 검수 큐 ({newsList.filter(n => n.reviewStatus === 'pending').length}건 대기)
+            📋 뉴스 팩트 검수 큐 ({pendingCount}건 대기)
           </button>
           <button
             onClick={() => setActiveTab('audit')}
@@ -139,14 +161,14 @@ export const AdminDashboard: React.FC<Props> = ({
                       textTransform: 'uppercase'
                     }}
                   >
-                    {status === 'pending' ? '🟡 검수 대기' : status === 'approved' ? '🟢 승인됨' : status === 'rejected' ? '🔴 반려됨' : '전체'}
+                    {status === 'pending' ? `🟡 검수 대기 (${pendingCount})` : status === 'approved' ? '🟢 승인됨' : status === 'rejected' ? '🔴 반려됨' : '전체'}
                   </button>
                 ))}
               </div>
 
               {filteredNews.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                  선택한 상태의 뉴스 팩트 항목이 없습니다.
+                <div style={{ textAlign: 'center', padding: '40px', color: '#64748b', background: '#141822', borderRadius: '12px' }}>
+                  현재 선택된 상태의 항목이 없습니다.
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -188,7 +210,7 @@ export const AdminDashboard: React.FC<Props> = ({
                       {item.reviewStatus === 'pending' && (
                         <div style={{ display: 'flex', gap: '10px', marginTop: '16px', borderTop: '1px solid #232a3d', paddingTop: '12px' }}>
                           <button
-                            onClick={() => onApprove(item.newsId)}
+                            onClick={() => handleLocalApprove(item.newsId)}
                             style={{
                               background: '#16a34a',
                               color: '#fff',
@@ -203,7 +225,7 @@ export const AdminDashboard: React.FC<Props> = ({
                             ✓ 승인 (공개 피드에 즉시 노출)
                           </button>
                           <button
-                            onClick={() => onReject(item.newsId, '사실 확인 불명확 / 출처 신뢰도 낮음')}
+                            onClick={() => handleLocalReject(item.newsId, '사실 확인 불명확 / 출처 신뢰도 낮음')}
                             style={{
                               background: '#e11d48',
                               color: '#fff',
