@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { gdArtistProfile, sampleNewsFacts, sampleAuditLogs } from './data/initialData';
+import { useState, useMemo } from 'react';
+import { allArtistsCatalog, btsTourEvents, blackpinkTourEvents } from './data/artistsCatalog';
+import { initialBigBangTourEvents, sampleNewsFacts, sampleAuditLogs } from './data/initialData';
 import { useTourEvents } from './hooks/useTourEvents';
 import { useLanguage } from './hooks/useLanguage';
 import { GdAnchorHero } from './components/GdAnchorHero';
@@ -7,11 +8,13 @@ import { WorldTourMap } from './components/WorldTourMap';
 import { NewsFactFeed } from './components/NewsFactFeed';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { AdminDashboard } from './components/AdminDashboard';
+import { ArtistSelector } from './components/ArtistSelector';
 import { TourEvent, TourNewsFact, PipelineAuditLog } from './types/types';
 
 export default function App() {
   const { currentLang, setCurrentLang } = useLanguage('ko');
-  const { events, updateStatus } = useTourEvents();
+  const { events: gdEvents, updateStatus } = useTourEvents();
+  const [selectedArtistId, setSelectedArtistId] = useState<string>('bigbang-gd');
   const [viewMode, setViewMode] = useState<'anchor' | 'all'>('anchor');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -23,6 +26,17 @@ export default function App() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
+
+  // 선택된 아티스트 프로필 & 투어 데이터 동적 매핑
+  const currentProfile = useMemo(() => {
+    return allArtistsCatalog.find(a => a.artistId === selectedArtistId) || allArtistsCatalog[0];
+  }, [selectedArtistId]);
+
+  const currentEvents = useMemo(() => {
+    if (selectedArtistId === 'bts') return btsTourEvents;
+    if (selectedArtistId === 'blackpink') return blackpinkTourEvents;
+    return gdEvents.length > 0 ? gdEvents : initialBigBangTourEvents;
+  }, [selectedArtistId, gdEvents]);
 
   const handleStatusToggle = async (selectedEv: TourEvent) => {
     const nextStatus: TourEvent['status'] =
@@ -54,7 +68,6 @@ export default function App() {
     showToast('✕ 해당 뉴스 팩트가 반려 처리되었습니다.');
   };
 
-  // 선택된 언어에 정확히 매칭되는 '승인된' 뉴스만 필터링 (SEA는 EN 매핑)
   const targetLang = currentLang === 'sea' ? 'en' : currentLang;
   const approvedNews = allNews.filter(
     (n) => n.reviewStatus === 'approved' && n.language === targetLang
@@ -94,13 +107,13 @@ export default function App() {
         />
       )}
 
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', flexWrap: 'wrap', gap: '12px' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '1.8rem', color: '#f8fafc', fontWeight: 800 }}>
             K-POP TOUR PULSE
           </h1>
           <span style={{ fontSize: '12px', color: '#22c55e', fontWeight: 600 }}>
-            ● Google Cloud Firestore Live Connected
+            ● Multi-Artist Global World Tour Network
           </span>
         </div>
 
@@ -124,16 +137,27 @@ export default function App() {
         </div>
       </header>
 
+      {/* Tier-1 아티스트 셀렉터 바 (GD / BTS / BLACKPINK) */}
+      <ArtistSelector
+        artists={allArtistsCatalog}
+        selectedArtistId={selectedArtistId}
+        lang={currentLang}
+        onSelectArtist={(id) => {
+          setSelectedArtistId(id);
+          setViewMode('anchor');
+        }}
+      />
+
       {viewMode === 'anchor' && (
         <GdAnchorHero
-          profile={gdArtistProfile}
+          profile={currentProfile}
           lang={currentLang}
           onExploreAll={() => setViewMode('all')}
         />
       )}
 
       <WorldTourMap
-        events={events}
+        events={currentEvents}
         lang={currentLang}
         onSelectEvent={handleStatusToggle}
       />
