@@ -1,0 +1,31 @@
+name: Auto Tour & News Pipeline Scheduler
+
+on:
+  schedule:
+    # 매 6시간마다 자동 실행 (한국 시간 기준 03:00, 09:00, 15:00, 21:00)
+    - cron: '0 */6 * * *'
+  workflow_dispatch: # 수동 즉시 실행 지원
+
+jobs:
+  sync-tours-and-news:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Copyright 8-Gram Plagiarism Tests
+        run: node scripts/runCopyrightTests.mjs
+
+      - name: Run 5-Language Completeness Audit
+        run: node scripts/auditMultilingual.mjs
+
+      - name: Log Scheduler Status
+        run: echo "✅ Auto Sync Pipeline Cycle Completed Successfully at $(date)"
