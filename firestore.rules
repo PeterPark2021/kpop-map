@@ -20,11 +20,14 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // 만 14세 인증(ageVerified == true)이 완료된 소유자만 사용자 문서 읽기/쓰기 가능
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null && request.auth.uid == userId
+                            && request.resource.data.ageVerified == true;
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
-    // 시스템 설정 (Discord 웹훅 등): 관리자만 읽기/쓰기 가능 (클라이언트 절대 비공개)
     match /system_config/{configId} {
       allow read, write: if isAdmin();
     }

@@ -74,7 +74,7 @@ export interface LanguageContentItem {
   koreanText: string;
   romanization: string;
   audioScript: string;
-  audioUrl?: string; // 정식 Cloud TTS 사전 생성 오디오 URL
+  audioUrl?: string; // ?類ㅻ뻼 Cloud TTS ??????밴쉐 ??삳탵??URL
   translations: {
     en: LanguageContentTranslation;
     ja: LanguageContentTranslation;
