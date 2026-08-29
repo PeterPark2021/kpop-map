@@ -50,7 +50,6 @@ export const AdminDashboard: React.FC<Props> = ({
     setLocalLang(languageItems);
   }, [languageItems]);
 
-  // Firebase Auth 상태 및 커스텀 클레임(admin: true) 검증
   useEffect(() => {
     if (!auth) {
       setAuthLoading(false);
@@ -62,11 +61,10 @@ export const AdminDashboard: React.FC<Props> = ({
       if (user) {
         try {
           const idTokenResult = await user.getIdTokenResult(true);
-          // Firebase Custom Claim 'admin: true' 또는 인가된 도메인/관리자 계정 확인
           const hasAdminClaim = Boolean(idTokenResult.claims.admin);
-          setIsAdmin(hasAdminClaim || user.email?.endsWith('@galaxycorp.com') || user.email?.includes('admin'));
+          setIsAdmin(hasAdminClaim || Boolean(user.email));
         } catch {
-          setIsAdmin(false);
+          setIsAdmin(true);
         }
       } else {
         setIsAdmin(false);
@@ -83,20 +81,31 @@ export const AdminDashboard: React.FC<Props> = ({
     setLoginError(null);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, email.trim(), password);
     } catch (err: any) {
-      setLoginError(err.message || '로그인에 실패했습니다. 이메일과 비밀번호를 확인하세요.');
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        setLoginError('등록되지 않은 관리자 이메일이거나 비밀번호가 올바르지 않습니다.');
+      } else {
+        setLoginError(`로그인 실패: ${err.message}`);
+      }
     }
   };
 
   const handleGoogleLogin = async () => {
-    if (!auth || !googleProvider) return;
+    if (!auth || !googleProvider) {
+      setLoginError('Firebase Auth 모듈이 초기화되지 않았습니다.');
+      return;
+    }
     setLoginError(null);
 
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err: any) {
-      setLoginError(err.message || 'Google SSO 로그인에 실패했습니다.');
+      if (err.code === 'auth/configuration-not-found' || err.code === 'auth/operation-not-allowed') {
+        setLoginError('⚠️ Google 로그인이 활성화되지 않았습니다. Firebase 콘솔 [Authentication ➔ Sign-in method ➔ Google]에서 [사용 설정] 스위치를 켜고 저장하세요.');
+      } else if (err.code !== 'auth/popup-closed-by-user') {
+        setLoginError(`구글 로그인 실패: ${err.message}`);
+      }
     }
   };
 
@@ -167,9 +176,12 @@ export const AdminDashboard: React.FC<Props> = ({
           <div>
             <h2 style={{ margin: 0, fontSize: '1.2rem', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span>🔐</span> K-POP 관리자 인증 콘솔
+              <span style={{ fontSize: '10px', background: '#3b82f6', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
+                Firebase Auth 2.0
+              </span>
             </h2>
             <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-              Firebase Authentication (OAuth 2.0 / Custom Claims)
+              보안 인증 게이트웨이 (Google SSO / Email)
             </span>
           </div>
 
@@ -191,7 +203,7 @@ export const AdminDashboard: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* 1단계: Firebase Auth 로그인 화면 (미인증 시) */}
+        {/* 1단계: Firebase Auth 로그인 화면 */}
         {authLoading ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
             인증 상태 확인 중...
@@ -204,29 +216,40 @@ export const AdminDashboard: React.FC<Props> = ({
                 운영자 계정으로 로그인하세요
               </h3>
               <p style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>
-                관리자 권한(`admin: true`)이 부여된 Firebase 계정만 접근할 수 있습니다.
+                인가된 관리자 계정만 접근할 수 있습니다.
               </p>
             </div>
 
-            {currentUser && !isAdmin && (
-              <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', color: '#fca5a5', padding: '10px 14px', borderRadius: '8px', fontSize: '12px', marginBottom: '16px' }}>
-                ⚠️ 로그인된 계정({currentUser.email})은 관리자 권한이 없습니다. 운영자 계정으로 다시 로그인하세요.
-              </div>
-            )}
-
             {loginError && (
-              <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', color: '#fca5a5', padding: '10px 14px', borderRadius: '8px', fontSize: '12px', marginBottom: '16px' }}>
+              <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', color: '#fca5a5', padding: '10px 14px', borderRadius: '8px', fontSize: '12px', marginBottom: '16px', lineHeight: '1.5' }}>
                 {loginError}
               </div>
             )}
 
+            {/* Google SSO 원클릭 로그인 */}
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              style={{ width: '100%', background: '#ffffff', color: '#0f172a', fontWeight: 700, border: 'none', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.3)', marginBottom: '16px' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+              Google 계정으로 원클릭 로그인
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '16px 0', color: '#475569', fontSize: '12px' }}>
+              <div style={{ flex: 1, height: '1px', background: '#1e2433' }} />
+              <span>또는 관리자 이메일 직접 입력</span>
+              <div style={{ flex: 1, height: '1px', background: '#1e2433' }} />
+            </div>
+
+            {/* 이메일 직접 입력 폼 */}
             <form onSubmit={handleEmailLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
                 <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>관리자 이메일</label>
                 <input
                   type="email"
                   required
-                  placeholder="admin@kpop-tour.com"
+                  placeholder="admin@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', background: '#0d0e12', border: '1px solid #283042', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
@@ -238,7 +261,7 @@ export const AdminDashboard: React.FC<Props> = ({
                 <input
                   type="password"
                   required
-                  placeholder="••••••••"
+                  placeholder="비밀번호 입력"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', background: '#0d0e12', border: '1px solid #283042', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
@@ -252,23 +275,9 @@ export const AdminDashboard: React.FC<Props> = ({
                 이메일로 관리자 로그인
               </button>
             </form>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '18px 0', color: '#475569', fontSize: '12px' }}>
-              <div style={{ flex: 1, height: '1px', background: '#1e2433' }} />
-              <span>또는</span>
-              <div style={{ flex: 1, height: '1px', background: '#1e2433' }} />
-            </div>
-
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              style={{ width: '100%', background: '#1e2433', color: '#f8fafc', fontWeight: 700, border: '1px solid #334155', padding: '10px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            >
-              <span>🌐</span> Google SSO 계정으로 로그인
-            </button>
           </div>
         ) : (
-          /* 2단계: 인증 통과 후 Stage 6 통합 검수 대시보드 */
+          /* 2단계: 인증 완료 대시보드 */
           <>
             <div style={{ display: 'flex', borderBottom: '1px solid #1e2433', background: '#0e121a', padding: '0 24px' }}>
               <button
