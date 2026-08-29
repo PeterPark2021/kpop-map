@@ -59,3 +59,18 @@
   1. **가입 플로우**: 이메일 가입 및 최초 Google 소셜 로그인 시 출생년월 1회 검증 강제. 만 14세 미만은 가입 차단.
   2. **데이터 최소화**: 출생년월은 나이 계산 후 즉시 폐기하며, Firestore에는 `ageVerified: true`와 `ageVerifiedAt` 플래그만 보관 (법적 책임 및 침해 위험 최소화).
   3. **기존 사용자 마이그레이션**: 기존 가입자는 이전 정책 통과자로 간주하여 `ageVerified: true`로 일괄 자동 인정(Grandfathering).
+### ADR-008 Follow-up: reviewStatus 읽기 게이트 및 파일 인코딩 완료
+- **일자**: 2026-08-30
+- **내용**:
+  1. `newsFacts`, `languageContent`의 읽기 권한을 `resource.data.reviewStatus == 'approved' || isAdmin()`으로 통제하여 미승인 콘텐츠의 외부 유출 차단.
+  2. `firestore.rules` 파일 인코딩을 UTF-8 (No BOM)으로 전면 교정하여 한글 주석 깨짐(mojibake) 문제 해결.
+### ADR-008 Follow-up: reviewStatus 읽기 게이트 및 파일 인코딩 완료
+- **일자**: 2026-08-30
+- **내용**:
+  1. `newsFacts`, `languageContent`의 읽기 권한을 `resource.data.reviewStatus == 'approved' || isAdmin()`으로 통제하여 미승인 콘텐츠의 외부 유출 차단.
+  2. `firestore.rules` 파일 인코딩을 UTF-8 (No BOM)으로 전면 교정하여 한글 주석 깨짐(mojibake) 문제 해결.
+### ADR-008 Follow-up: reviewStatus 읽기 게이트 및 파일 인코딩 완료
+- **일자**: 2026-08-30
+- **내용**:
+  1. `newsFacts`, `languageContent`의 읽기 권한을 `resource.data.reviewStatus == 'approved' || isAdmin()`으로 통제하여 미승인 콘텐츠의 외부 유출 차단.
+  2. `firestore.rules` 파일 인코딩을 UTF-8 (No BOM)으로 전면 교정하여 한글 주석 깨짐(mojibake) 문제 해결.

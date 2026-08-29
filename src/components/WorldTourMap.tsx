@@ -14,7 +14,7 @@ export const WorldTourMap: React.FC<Props> = ({ events, lang, onSelectEvent }) =
   const getVenueDisplay = (venue: string | LocalizedString | undefined): string => {
     if (!venue) return '';
     if (typeof venue === 'string') return venue;
-    return venue[lang] || venue.en || '';
+    return venue[lang] || venue.en || venue.ko || '';
   };
 
   return (
@@ -68,9 +68,9 @@ export const WorldTourMap: React.FC<Props> = ({ events, lang, onSelectEvent }) =
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
           {events.map(ev => {
-            const cityName = ev.city[lang] || ev.city.en;
+            const cityName = ev.city[lang] || ev.city.en || ev.city.ko || 'City';
             const venueDisplay = getVenueDisplay(ev.venueName);
-            const artistName = ev.artistName[lang] || ev.artistName.en || 'K-POP';
+            const artistName = ev.artistName[lang] || ev.artistName.en || ev.artistName.ko || 'K-POP';
 
             return (
               <div
@@ -99,7 +99,7 @@ export const WorldTourMap: React.FC<Props> = ({ events, lang, onSelectEvent }) =
                 <h3 style={{ margin: '8px 0 2px 0', fontSize: '1.2rem', color: '#f8fafc' }}>{cityName}</h3>
                 <p style={{ margin: '8px 0 4px 0', color: '#94a3b8', fontSize: '13px' }}>{venueDisplay}</p>
                 <div style={{ fontSize: '11px', color: '#64748b' }}>
-                  📅 {new Date(ev.eventDate).toLocaleDateString()} ({ev.showCount}회)
+                  📅 {new Date(ev.eventDate).toLocaleDateString()}
                 </div>
 
                 {onSelectEvent && (

@@ -55,7 +55,7 @@ export const InteractiveMap: React.FC<Props> = ({ events, lang, onSelectEvent })
   const getVenueDisplay = (venue: string | LocalizedString | undefined): string => {
     if (!venue) return '';
     if (typeof venue === 'string') return venue;
-    return venue[lang] || venue.en || '';
+    return venue[lang] || venue.en || venue.ko || '';
   };
 
   return (
@@ -85,8 +85,8 @@ export const InteractiveMap: React.FC<Props> = ({ events, lang, onSelectEvent })
         {events.map((ev) => {
           const isLive = ev.status === 'inProgress';
           const icon = isLive ? customLiveIcon : customGoldIcon;
-          const cityName = ev.city[lang] || ev.city.en;
-          const artistName = ev.artistName[lang] || ev.artistName.en || 'K-POP';
+          const cityName = ev.city[lang] || ev.city.en || ev.city.ko || 'City';
+          const artistName = ev.artistName[lang] || ev.artistName.en || ev.artistName.ko || 'K-POP';
           const venueDisplay = getVenueDisplay(ev.venueName);
 
           return (
@@ -120,7 +120,7 @@ export const InteractiveMap: React.FC<Props> = ({ events, lang, onSelectEvent })
                     {venueDisplay}
                   </p>
                   <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px' }}>
-                    📅 {new Date(ev.eventDate).toLocaleDateString()} ({ev.showCount}회 공연)
+                    📅 {new Date(ev.eventDate).toLocaleDateString()}
                   </div>
 
                   {onSelectEvent && (
@@ -142,7 +142,7 @@ export const InteractiveMap: React.FC<Props> = ({ events, lang, onSelectEvent })
                         fontSize: '11px'
                       }}
                     >
-                      ⚡ 상태 토글 (실시간 동기화)
+                      ⚡ 상태 토글
                     </button>
                   )}
                 </div>
