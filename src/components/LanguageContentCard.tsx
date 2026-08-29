@@ -32,7 +32,7 @@ export const LanguageContentCard: React.FC<Props> = ({
     e.stopPropagation();
 
     playKoreanTTS(
-      item.audioScript || item.koreanText,
+      item.audioScript || item.koreanText || item.koreanPhrase || '',
       item.audioUrl,
       () => setIsPlayingAudio(true),
       () => setIsPlayingAudio(false)
@@ -71,11 +71,11 @@ export const LanguageContentCard: React.FC<Props> = ({
               gap: '4px'
             }}
           >
-            {isFandom ? '💬 팬덤 용어' : '🔊 의성어·의태어'}
+            {isFandom ? '?뮠 ?щ뜡 ?⑹뼱' : '?뵄 ?섏꽦?는룹쓽?쒖뼱'}
           </span>
 
           <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>
-            ● {item.level}
+            ??{item.level}
           </span>
         </div>
 
@@ -92,7 +92,7 @@ export const LanguageContentCard: React.FC<Props> = ({
           <button
             type="button"
             onClick={handlePlayTTS}
-            title="Google Cloud AI 음성 듣기"
+            title="Google Cloud AI ?뚯꽦 ?ｊ린"
             style={{
               background: isPlayingAudio ? '#eab308' : '#1e2433',
               color: isPlayingAudio ? '#000' : '#ffd700',
@@ -111,7 +111,7 @@ export const LanguageContentCard: React.FC<Props> = ({
               flexShrink: 0
             }}
           >
-            {isPlayingAudio ? '🔊' : '🔈'}
+            {isPlayingAudio ? '?뵄' : '?뵂'}
           </button>
         </div>
 
@@ -143,11 +143,11 @@ export const LanguageContentCard: React.FC<Props> = ({
               gap: '6px'
             }}
           >
-            <span>💡 왜 이런 뜻일까요? (Why this meaning?)</span>
+            <span>?뮕 ???대윴 ?살씪源뚯슂? (Why this meaning?)</span>
             <span style={{ fontSize: '9px', background: '#283042', color: '#cbd5e1', padding: '1px 5px', borderRadius: '4px' }}>
-              🇰🇷 원문
+              ?눖?눟 ?먮Ц
             </span>
-            <span style={{ fontSize: '10px' }}>{isNoteOpen ? '▲' : '▼'}</span>
+            <span style={{ fontSize: '10px' }}>{isNoteOpen ? '?? : '??}</span>
           </button>
 
           {isNoteOpen && (

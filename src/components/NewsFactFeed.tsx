@@ -17,10 +17,10 @@ export const NewsFactFeed: React.FC<Props> = ({ news }) => {
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
         <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          ?벐 ??묎텒 ?덉떖 ?⑺듃 ?쇰뱶 (Copyright-Safe Fact Feed)
+          ?踰????臾롰뀙 ??됰뼎 ??븍뱜 ??곕굡 (Copyright-Safe Fact Feed)
         </h3>
         <span style={{ fontSize: '12px', background: '#0369a1', color: '#e0f2fe', padding: '3px 10px', borderRadius: '20px', fontWeight: 600 }}>
-          AI ?⑺듃 異붿텧 & 5媛?援?뼱 ?먮룞 踰덉뿭
+          AI ??븍뱜 ?곕뗄??& 5揶???堉??癒?짗 甕곕뜆肉?
         </span>
       </div>
 
@@ -43,7 +43,7 @@ export const NewsFactFeed: React.FC<Props> = ({ news }) => {
                 </span>
                 {item.isOfficial && (
                   <span style={{ background: '#059669', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
-                    ??怨듭떇 ?몄쬆 異쒖쿂
+                    ???⑤벊???紐꾩쵄 ?곗뮇荑?
                   </span>
                 )}
               </div>
@@ -57,10 +57,10 @@ export const NewsFactFeed: React.FC<Props> = ({ news }) => {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #232a3d', paddingTop: '10px' }}>
               <small style={{ color: '#64748b', fontSize: '12px' }}>
-                異쒖쿂: <strong>{item.sourceName}</strong>
+                ?곗뮇荑? <strong>{item.sourceName}</strong>
               </small>
               <small style={{ color: '#64748b', fontSize: '12px' }}>
-                {new Date(item.publishedAt).toLocaleDateString()}
+                {item.publishedAt ? new Date(item.publishedAt).toLocaleDateString() : new Date().toLocaleDateString()}
               </small>
             </div>
           </div>

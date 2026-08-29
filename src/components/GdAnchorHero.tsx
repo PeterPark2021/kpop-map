@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { ArtistProfile, LanguageCode } from '../types/types';
 
 interface Props {
@@ -32,7 +32,7 @@ export const GdAnchorHero: React.FC<Props> = ({ profile, lang, onExploreAll }) =
         {profile.name[lang] || profile.name.ko}
       </h1>
       <p style={{ color: '#cbd5e1', maxWidth: '680px', lineHeight: '1.6', fontSize: '1.05rem' }}>
-        {profile.description[lang] || profile.description.ko}
+        {profile.description ? (profile.description[lang] || profile.description.ko) : ''}
       </p>
       <div style={{ marginTop: '24px' }}>
         <button
