@@ -11,6 +11,7 @@ interface Props {
   onRejectNews: (newsId: string, reason: string) => Promise<void>;
   onApproveLang: (contentId: string) => Promise<void>;
   onRejectLang: (contentId: string) => Promise<void>;
+  onNewsSync?: (newItems: TourNewsFact[]) => void;
   onClose: () => void;
 }
 
@@ -22,6 +23,7 @@ export const AdminDashboard: React.FC<Props> = ({
   onRejectNews,
   onApproveLang,
   onRejectLang,
+  onNewsSync,
   onClose
 }) => {
   const [activeTab, setActiveTab] = useState<'news' | 'lang' | 'rss' | 'audit'>('news');
@@ -36,10 +38,15 @@ export const AdminDashboard: React.FC<Props> = ({
     setIsSyncing(true);
     setSyncStats(null);
     try {
-      const res = await rssCollectorService.executeRssSync();
-      setSyncStats(`✓ ${res.totalFeedsChecked}개 피드 점검 완료: 팩트 ${res.newFactsExtracted}건 추출 (자동승인: ${res.autoApprovedCount}, 검수대기: ${res.pendingReviewCount})`);
+      const { result, items } = await rssCollectorService.executeRssSync();
+      setSyncStats(`✓ ${result.totalFeedsChecked}개 피드 점검 완료: 팩트 ${result.newFactsExtracted}건 추출 (자동승인: ${result.autoApprovedCount}, 검수대기: ${result.pendingReviewCount})`);
+      
+      // ⚡ 상위 리액트 상태에 즉시 주입하여 화면 갱신
+      if (onNewsSync) {
+        onNewsSync(items);
+      }
     } catch (err) {
-      setSyncStats('⚠️ RSS 수집 중 일시적 네트워크 오류가 발생했습니다.');
+      setSyncStats('⚠️ RSS 수집 중 일시적 오류가 발생했습니다.');
     } finally {
       setIsSyncing(false);
     }
@@ -219,13 +226,15 @@ export const AdminDashboard: React.FC<Props> = ({
         {activeTab === 'news' && (
           <div>
             {pendingNews.length === 0 ? (
-              <p style={{ color: '#64748b', textAlign: 'center', padding: '30px 0' }}>검수 대기 중인 뉴스가 없습니다. (모두 승인 완료)</p>
+              <p style={{ color: '#64748b', textAlign: 'center', padding: '30px 0' }}>
+                검수 대기 중인 뉴스가 없습니다. (모든 뉴스가 자동 승인되었거나 승인 완료됨)
+              </p>
             ) : (
               pendingNews.map(item => (
                 <div key={item.newsId} style={{ background: '#161b26', padding: '16px', borderRadius: '12px', marginBottom: '12px', border: '1px solid #283042' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <span style={{ fontSize: '11px', color: '#ffd700', fontWeight: 700 }}>출처: {item.sourceName || item.source}</span>
-                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>신뢰도 점수: {(item.verificationConfidence || 0.8) * 100}%</span>
+                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>신뢰도 점수: {Math.round((item.verificationConfidence || 0.8) * 100)}%</span>
                   </div>
                   <h4 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', color: '#f8fafc' }}>{item.title || item.headline}</h4>
                   <p style={{ fontSize: '13px', color: '#cbd5e1', margin: '0 0 12px 0' }}>{item.summary}</p>

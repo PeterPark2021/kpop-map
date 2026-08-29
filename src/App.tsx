@@ -43,7 +43,6 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // 관리자 커스텀 클레임(admin: true) 검증
   useEffect(() => {
     if (auth && auth.currentUser) {
       auth.currentUser.getIdTokenResult().then(res => {
@@ -69,7 +68,6 @@ export default function App() {
     }
   }, []);
 
-  // 📡 뉴스, 한국어 학습, 사용자 상태 실시간 스트리밍
   useEffect(() => {
     const unsubNews = tourService.subscribeToAllNews((items) => {
       if (items && items.length > 0) setAllNews(items);
@@ -169,6 +167,13 @@ export default function App() {
     }
   };
 
+  const handleRssNewsSync = (newItems: TourNewsFact[]) => {
+    setAllNews(prev => {
+      const merged = [...newItems, ...prev.filter(p => !newItems.some(n => n.newsId === p.newsId))];
+      return merged;
+    });
+  };
+
   const targetLang = currentLang === 'sea' ? 'en' : currentLang;
   const approvedNews = allNews.filter(
     (n) => n.reviewStatus === 'approved' &&
@@ -225,11 +230,11 @@ export default function App() {
           onRejectNews={handleRejectNews}
           onApproveLang={handleApproveLang}
           onRejectLang={handleRejectLang}
+          onNewsSync={handleRssNewsSync}
           onClose={() => setIsAdminOpen(false)}
         />
       )}
 
-      {/* 상단 네비게이션 헤더 */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '1.8rem', color: '#f8fafc', fontWeight: 800 }}>
@@ -321,7 +326,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* 5대 아티스트 셀렉터 & 팔로우 필터 바 */}
       <ArtistSelector
         artists={allArtistsCatalog}
         selectedArtistId={selectedArtistId}
@@ -346,7 +350,6 @@ export default function App() {
         />
       )}
 
-      {/* 실시간 Firestore onSnapshot 데이터 및 관리자 권한 바인딩 */}
       <WorldTourMap
         events={liveEvents}
         lang={currentLang}

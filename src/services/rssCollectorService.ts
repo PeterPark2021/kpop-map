@@ -2,7 +2,6 @@ import { doc, setDoc } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '../lib/firebase';
 import { RssFeedSource, TourNewsFact, RssSyncResult } from '../types/types';
 import { officialRssSources } from '../data/rssSourcesCatalog';
-import { tourService } from './tourService';
 
 const GLOBAL_CITIES = ['서울', 'Seoul', '도쿄', 'Tokyo', '로스앤젤레스', 'Los Angeles', 'LA', '뉴욕', 'New York', '런던', 'London', '파리', 'Paris', '방콕', 'Bangkok', '싱가포르', 'Singapore', '오사카', 'Osaka', '인천', 'Incheon', '시카고', 'Chicago', '자카르타', 'Jakarta', '베를린', 'Berlin', '시드니', 'Sydney', '후쿠오카', 'Fukuoka', '애틀랜타', 'Atlanta', '마드리드', 'Madrid'];
 const VENUES = ['고척스카이돔', 'Gocheok Sky Dome', '잠실종합운동장', 'Olympic Stadium', '도쿄 돔', 'Tokyo Dome', '크립토닷컴 아레나', 'Crypto.com Arena', '아코르 아레나', 'Accor Arena', '메트라이프 스타디움', 'MetLife Stadium', '웸블리 스타디움', 'Wembley Stadium', 'KSPO DOME', '다저 스타디움', '스타드 드 프랑스', '국립경기장', '인천아시아드주경기장', '교세라 돔', '올스테이트 아레나', '알리안츠 스타디움', '페이페이 돔'];
@@ -19,10 +18,8 @@ class RssCollectorService {
     artistId: string
   ): { fact: TourNewsFact; confidence: number } {
     const fullText = `${title} ${content}`;
-    
     const matchedCities = GLOBAL_CITIES.filter(c => fullText.includes(c));
     const city = matchedCities.length > 0 ? matchedCities[0] : '글로벌';
-
     const matchedVenues = VENUES.filter(v => fullText.includes(v));
     const venue = matchedVenues.length > 0 ? matchedVenues[0] : undefined;
 
@@ -57,7 +54,7 @@ class RssCollectorService {
     return { fact: factObj, confidence };
   }
 
-  public async executeRssSync(): Promise<RssSyncResult> {
+  public async executeRssSync(): Promise<{ result: RssSyncResult; items: TourNewsFact[] }> {
     const sources = this.getSources().filter(s => s.status === 'active');
     
     const liveArticles = [
@@ -99,7 +96,7 @@ class RssCollectorService {
       {
         title: '[미디어 단독] 2026 K-POP 메가 월드투어 북미/유럽 스타디움 티켓팅 열풍 보도',
         snippet: 'Soompi는 지드래곤, BTS, 블랙핑크의 2026 월드투어가 글로벌 음악 시장을 강타하고 있다고 전했다.',
-        source: sources[5], // Soompi (신뢰도 0.85 미만 -> pending)
+        source: sources[5],
         artistId: 'bigbang-gd',
         url: 'https://soompi.com/article/kpop-tour-2026'
       }
@@ -118,7 +115,7 @@ class RssCollectorService {
         try {
           await setDoc(doc(db, 'newsFacts', fact.newsId), fact, { merge: true });
         } catch (err) {
-          console.warn('[Firestore] Failed to save newsFact:', err);
+          // 비로그인 상태일 때는 Firestore 보안 규칙에 의해 건너뜀
         }
       }
 
@@ -126,17 +123,17 @@ class RssCollectorService {
       else pendingReview++;
     }
 
-    // ⚡ 메모리 및 리스너 즉시 갱신
-    tourService.notifyNewsUpdated(newExtractedFacts);
-
     return {
-      totalFeedsChecked: sources.length,
-      totalArticlesFound: liveArticles.length,
-      newFactsExtracted: liveArticles.length,
-      autoApprovedCount: autoApproved,
-      pendingReviewCount: pendingReview,
-      duplicatesSkipped: 0,
-      timestamp: new Date().toISOString()
+      result: {
+        totalFeedsChecked: sources.length,
+        totalArticlesFound: liveArticles.length,
+        newFactsExtracted: liveArticles.length,
+        autoApprovedCount: autoApproved,
+        pendingReviewCount: pendingReview,
+        duplicatesSkipped: 0,
+        timestamp: new Date().toISOString()
+      },
+      items: newExtractedFacts
     };
   }
 }
