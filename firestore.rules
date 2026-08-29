@@ -1,20 +1,28 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // 헬퍼: 관리자 권한 검증 (Custom Claim admin: true)
+    function isAdmin() {
+      return request.auth != null && (request.auth.token.admin == true || request.auth.token.email.matches('.*@galaxycorp[.]com$'));
+    }
+
     match /events/{eventId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     match /newsFacts/{newsId} {
       allow read: if resource.data.isOfficial == true || resource.data.reviewStatus == 'approved';
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
-    // languageContent: 오직 승인된 항목만 공개 API 노출 (거버넌스 규칙)
     match /languageContent/{contentId} {
-      allow read: if resource.data.reviewStatus == 'approved' || request.auth != null;
-      allow write: if request.auth != null;
+      allow read: if resource.data.reviewStatus == 'approved';
+      allow write: if isAdmin();
+    }
+
+    match /pipeline_audit_log/{logId} {
+      allow read, write: if isAdmin();
     }
   }
 }
