@@ -69,7 +69,11 @@ export default function App() {
     }
   }, []);
 
+  // 📡 뉴스, 한국어 학습, 사용자 상태 실시간 스트리밍
   useEffect(() => {
+    const unsubNews = tourService.subscribeToAllNews((items) => {
+      if (items && items.length > 0) setAllNews(items);
+    });
     const unsubLang = tourService.subscribeToLanguageContent((items) => {
       if (items && items.length > 0) setAllLangContent(items);
     });
@@ -77,6 +81,7 @@ export default function App() {
       setUserProfile(profile);
     });
     return () => {
+      unsubNews();
       unsubLang();
       unsubUser();
     };
@@ -103,7 +108,6 @@ export default function App() {
     return allArtistsCatalog.find(a => a.artistId === selectedArtistId) || allArtistsCatalog[0];
   }, [selectedArtistId]);
 
-  // 🔒 정직한 상태 변경 핸들러: 실제 Firestore 쓰기 완료 후에만 성공 토스트 출력
   const handleStatusToggle = async (selectedEv: TourEvent) => {
     const nextStatus: TourEvent['status'] =
       selectedEv.status === 'ticketOpen'

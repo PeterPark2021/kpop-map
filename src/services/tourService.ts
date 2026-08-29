@@ -1,10 +1,42 @@
-import { collection, onSnapshot, doc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, query, where, setDoc } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '../lib/firebase';
 import { TourEvent, TourNewsFact, LanguageContentItem, ReviewStatus } from '../types/types';
 import { initialBigBangTourEvents, sampleNewsFacts } from '../data/initialData';
 import { sampleLanguageContents } from '../data/sampleLanguageContent';
 
 class TourService {
+  private localNews: TourNewsFact[] = [...sampleNewsFacts];
+  private newsListeners: ((news: TourNewsFact[]) => void)[] = [];
+
+  // 📡 관리자 및 전체 뉴스 실시간 스트리밍 (pending 포함)
+  public subscribeToAllNews(callback: (news: TourNewsFact[]) => void): () => void {
+    if (isFirebaseConfigured && db) {
+      const newsCol = collection(db, 'newsFacts');
+      return onSnapshot(newsCol, (snapshot) => {
+        if (!snapshot.empty) {
+          const news = snapshot.docs.map(d => d.data() as TourNewsFact);
+          this.localNews = news;
+          callback(news);
+        } else {
+          callback(this.localNews);
+        }
+      }, (err) => {
+        console.warn('[Firestore] All news fallback:', err);
+        callback(this.localNews);
+      });
+    }
+    this.newsListeners.push(callback);
+    callback(this.localNews);
+    return () => {
+      this.newsListeners = this.newsListeners.filter(l => l !== callback);
+    };
+  }
+
+  public notifyNewsUpdated(newItems: TourNewsFact[]) {
+    this.localNews = [...newItems, ...this.localNews.filter(n => !newItems.some(item => item.newsId === n.newsId))];
+    this.newsListeners.forEach(l => l(this.localNews));
+  }
+
   public subscribeToTourEvents(
     callback: (events: TourEvent[]) => void,
     artistId?: string
@@ -18,25 +50,17 @@ class TourService {
           const events = snapshot.docs.map(d => d.data() as TourEvent);
           callback(events);
         } else {
-          if (import.meta.env.DEV) {
-            callback(initialBigBangTourEvents);
-          } else {
-            callback([]);
-          }
+          if (import.meta.env.DEV) callback(initialBigBangTourEvents);
+          else callback([]);
         }
       }, (err) => {
-        console.error('[Firestore] Events listener error:', err);
-        if (import.meta.env.DEV) {
-          callback(initialBigBangTourEvents);
-        } else {
-          callback([]);
-        }
+        console.error('[Firestore] Events error:', err);
+        if (import.meta.env.DEV) callback(initialBigBangTourEvents);
+        else callback([]);
       });
     }
 
-    if (import.meta.env.DEV) {
-      callback(initialBigBangTourEvents);
-    }
+    if (import.meta.env.DEV) callback(initialBigBangTourEvents);
     return () => {};
   }
 
@@ -64,15 +88,13 @@ class TourService {
           );
           callback(filtered);
         } else {
-          if (import.meta.env.DEV) callback(sampleNewsFacts);
-          else callback([]);
+          callback(this.localNews.filter(n => n.reviewStatus === 'approved'));
         }
       }, () => {
-        if (import.meta.env.DEV) callback(sampleNewsFacts);
-        else callback([]);
+        callback(this.localNews.filter(n => n.reviewStatus === 'approved'));
       });
     }
-    if (import.meta.env.DEV) callback(sampleNewsFacts);
+    callback(this.localNews.filter(n => n.reviewStatus === 'approved'));
     return () => {};
   }
 
@@ -82,8 +104,18 @@ class TourService {
 
   public async updateNewsReviewStatus(newsId: string, reviewStatus: ReviewStatus, reason?: string): Promise<void> {
     if (isFirebaseConfigured && db) {
-      const newsRef = doc(db, 'newsFacts', newsId);
-      await updateDoc(newsRef, { reviewStatus, rejectionReason: reason || null });
+      try {
+        const newsRef = doc(db, 'newsFacts', newsId);
+        await updateDoc(newsRef, { reviewStatus, rejectionReason: reason || null });
+      } catch (err) {
+        console.warn('[Firestore] Update status error:', err);
+      }
+    }
+    const item = this.localNews.find(n => n.newsId === newsId);
+    if (item) {
+      item.reviewStatus = reviewStatus;
+      if (reason) item.rejectionReason = reason;
+      this.newsListeners.forEach(l => l([...this.localNews]));
     }
   }
 
@@ -95,15 +127,13 @@ class TourService {
           const items = snapshot.docs.map(d => d.data() as LanguageContentItem);
           callback(items);
         } else {
-          if (import.meta.env.DEV) callback(sampleLanguageContents);
-          else callback([]);
+          callback(sampleLanguageContents);
         }
       }, () => {
-        if (import.meta.env.DEV) callback(sampleLanguageContents);
-        else callback([]);
+        callback(sampleLanguageContents);
       });
     }
-    if (import.meta.env.DEV) callback(sampleLanguageContents);
+    callback(sampleLanguageContents);
     return () => {};
   }
 
