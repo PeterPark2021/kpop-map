@@ -9,8 +9,8 @@ class TourService {
   private mockNews: TourNewsFact[] = sampleNewsFacts;
   private mockLang: LanguageContentItem[] = sampleLanguageContents;
 
-  // 1. 투어 일정 실시간 구독
-  public subscribeToEvents(callback: (events: TourEvent[]) => void): () => void {
+  // 1. 투어 일정 실시간 구독 (subscribeToTourEvents & subscribeToEvents 모두 지원)
+  public subscribeToTourEvents(callback: (events: TourEvent[]) => void): () => void {
     if (isFirebaseConfigured && db) {
       const eventsCol = collection(db, 'events');
       return onSnapshot(eventsCol, (snapshot) => {
@@ -29,6 +29,10 @@ class TourService {
     return () => {};
   }
 
+  public subscribeToEvents(callback: (events: TourEvent[]) => void): () => void {
+    return this.subscribeToTourEvents(callback);
+  }
+
   // 2. 투어 일정 상태 변경
   public async updateEventStatus(eventId: string, status: TourEvent['status']): Promise<void> {
     if (isFirebaseConfigured && db) {
@@ -43,7 +47,36 @@ class TourService {
     if (event) event.status = status;
   }
 
-  // 3. 뉴스 팩트 실시간 구독
+  // 3. 뉴스 팩트 실시간 구독 (subscribeToNewsFacts & subscribeToNews 모두 지원)
+  public subscribeToNewsFacts(artistId: string, lang: string, callback: (news: TourNewsFact[]) => void): () => void {
+    if (isFirebaseConfigured && db) {
+      const newsCol = collection(db, 'newsFacts');
+      return onSnapshot(newsCol, (snapshot) => {
+        if (!snapshot.empty) {
+          const news = snapshot.docs.map(d => d.data() as TourNewsFact);
+          const filtered = news.filter(n =>
+            n.reviewStatus === 'approved' &&
+            (n.artistId === artistId || artistId === 'bigbang-gd') &&
+            (n.language === lang || n.language === 'ko')
+          );
+          callback(filtered);
+        } else {
+          callback(this.mockNews);
+        }
+      }, (err) => {
+        console.warn('[Firestore] News fallback:', err);
+        callback(this.mockNews);
+      });
+    }
+    const filtered = this.mockNews.filter(n =>
+      n.reviewStatus === 'approved' &&
+      (n.artistId === artistId || artistId === 'bigbang-gd') &&
+      (n.language === lang || n.language === 'ko')
+    );
+    callback(filtered.length > 0 ? filtered : this.mockNews);
+    return () => {};
+  }
+
   public subscribeToNews(callback: (news: TourNewsFact[]) => void): () => void {
     if (isFirebaseConfigured && db) {
       const newsCol = collection(db, 'newsFacts');
