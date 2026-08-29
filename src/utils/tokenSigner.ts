@@ -12,6 +12,25 @@ function simpleHmacSha256(message: string, secret: string): string {
   return `sig_${hex}_${(combined.length * 31).toString(16)}`;
 }
 
+function toBase64Url(str: string): string {
+  const utf8Bytes = encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) =>
+    String.fromCharCode(parseInt(p1, 16))
+  );
+  return btoa(utf8Bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function fromBase64Url(base64Url: string): string {
+  let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  while (base64.length % 4) {
+    base64 += '=';
+  }
+  const binaryStr = atob(base64);
+  const utf8Str = Array.from(binaryStr)
+    .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+    .join('');
+  return decodeURIComponent(utf8Str);
+}
+
 export function generateUnsubscribeToken(
   uid: string,
   secretKey: string = DEFAULT_SECRET,
@@ -19,10 +38,7 @@ export function generateUnsubscribeToken(
 ): string {
   const expiry = Date.now() + validDays * 24 * 60 * 60 * 1000;
   const payload = `${uid}:${expiry}:unsubscribe`;
-  const encodedPayload = typeof btoa !== 'undefined'
-    ? btoa(payload).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-    : Buffer.from(payload).toString('base64url');
-
+  const encodedPayload = toBase64Url(payload);
   const signature = simpleHmacSha256(payload, secretKey);
   return `${encodedPayload}.${signature}`;
 }
@@ -38,19 +54,24 @@ export function verifyUnsubscribeToken(
   const [encodedPayload, receivedSignature] = parts;
   let payload = '';
   try {
-    payload = typeof atob !== 'undefined'
-      ? atob(encodedPayload.replace(/-/g, '+').replace(/_/g, '/'))
-      : Buffer.from(encodedPayload, 'base64url').toString('utf8');
+    payload = fromBase64Url(encodedPayload);
   } catch {
     return { valid: false, error: 'DECODE_ERROR' };
   }
 
-  const [uid, expiryStr, purpose] = payload.split(':');
+  const payloadParts = payload.split(':');
+  if (payloadParts.length !== 3) {
+    return { valid: false, error: 'INVALID_PAYLOAD_STRUCTURE' };
+  }
+
+  const [uid, expiryStr, purpose] = payloadParts;
   const expiry = parseInt(expiryStr, 10);
   if (purpose !== 'unsubscribe') return { valid: false, error: 'INVALID_TOKEN_PURPOSE' };
   if (Date.now() > expiry) return { valid: false, error: 'TOKEN_EXPIRED' };
   const expectedSignature = simpleHmacSha256(payload, secretKey);
-  if (receivedSignature !== expectedSignature) return { valid: false, error: 'SIGNATURE_MISMATCH_TAMPERED' };
+  if (receivedSignature !== expectedSignature) {
+    return { valid: false, error: 'SIGNATURE_MISMATCH_TAMPERED' };
+  }
 
   return { valid: true, uid };
 }
