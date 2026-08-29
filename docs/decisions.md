@@ -59,3 +59,14 @@
   1. **가입 플로우**: 이메일 가입 및 최초 Google 소셜 로그인 시 출생년월 1회 검증 강제. 만 14세 미만은 가입 차단.
   2. **데이터 최소화**: 출생년월은 나이 계산 후 즉시 폐기하며, Firestore에는 `ageVerified: true`와 `ageVerifiedAt` 플래그만 보관 (법적 책임 및 침해 위험 최소화).
   3. **기존 사용자 마이그레이션**: 기존 가입자는 이전 정책 통과자로 간주하여 `ageVerified: true`로 일괄 자동 인정(Grandfathering).
+---
+
+## ADR-009: 프로덕션 Mock 폴백 제거 및 Firestore 실데이터 25건 연동 복구
+- **상태**: 승인됨 (Accepted)
+- **일자**: 2026-08-30
+- **문제점 및 영향 기간**:
+  - 프로덕션 DB에 `events` 실데이터가 적재되지 않아 `snapshot.empty` 상태였으며, `tourService.ts`의 사일런트 폴백으로 인해 초기 개발 시점부터 프로덕션 배포 시점까지 로컬 가상 데이터가 노출되고 있었음.
+- **해결 조치**:
+  1. `scripts/seedProductionTourData.mjs`를 통해 5대 메가 아티스트 25개 도시 실데이터를 프로덕션 Firestore에 적재.
+  2. `tourService.ts`에서 사일런트 폴백을 `import.meta.env.DEV` 개발 환경으로 완전 격리하고, 프로덕션에서는 실시간 Firestore `onSnapshot` 스트리밍 강제.
+  3. `App.tsx`에서 모든 아티스트가 선택 즉시 Firestore에서 실시간 데이터를 받아오도록 수정.
