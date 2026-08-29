@@ -7,11 +7,9 @@ function createStandardPng(width, height, outputPath) {
 
   for (let y = 0; y < height; y++) {
     const rowOffset = y * rowSize;
-    rawData[rowOffset] = 0; // Filter byte: None
-
+    rawData[rowOffset] = 0;
     for (let x = 0; x < width; x++) {
       const pixelOffset = rowOffset + 1 + x * 4;
-      // 다크 골드 그라데이션 테마
       const isBorder = (x < 12 || x > width - 13 || y < 12 || y > height - 13);
       if (isBorder) {
         rawData[pixelOffset] = 234;     // R (Gold)
@@ -20,7 +18,7 @@ function createStandardPng(width, height, outputPath) {
         rawData[pixelOffset + 3] = 255; // A
       } else {
         const factor = y / height;
-        rawData[pixelOffset] = Math.floor(10 + factor * 15);   // Dark Blue
+        rawData[pixelOffset] = Math.floor(10 + factor * 15);
         rawData[pixelOffset + 1] = Math.floor(15 + factor * 20);
         rawData[pixelOffset + 2] = Math.floor(28 + factor * 35);
         rawData[pixelOffset + 3] = 255;
@@ -29,8 +27,6 @@ function createStandardPng(width, height, outputPath) {
   }
 
   const compressedData = zlib.deflateSync(rawData);
-
-  // PNG 헤더 및 청크 조합
   const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
   function makeChunk(type, data) {
@@ -63,11 +59,11 @@ function createStandardPng(width, height, outputPath) {
   const ihdrData = Buffer.alloc(13);
   ihdrData.writeUInt32BE(width, 0);
   ihdrData.writeUInt32BE(height, 4);
-  ihdrData[8] = 8;  // bit depth
-  ihdrData[9] = 6;  // color type RGBA
-  ihdrData[10] = 0; // compression
-  ihdrData[11] = 0; // filter
-  ihdrData[12] = 0; // interlace
+  ihdrData[8] = 8;
+  ihdrData[9] = 6;
+  ihdrData[10] = 0;
+  ihdrData[11] = 0;
+  ihdrData[12] = 0;
 
   const ihdr = makeChunk('IHDR', ihdrData);
   const idat = makeChunk('IDAT', compressedData);

@@ -1,22 +1,22 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { getFirestore, Firestore } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider, Auth } from 'firebase/auth';
 
 const apiKey = import.meta.env.VITE_FIREBASE_API_KEY || '';
 const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || '';
 
-export const isFirebaseConfigured = Boolean(
+export const isFirebaseConfigured: boolean = Boolean(
   apiKey &&
   apiKey !== 'your-api-key' &&
-  !apiKey.startsWith('AIzaSy...') &&
+  apiKey !== 'AIzaSy...' &&
   projectId &&
   projectId !== 'your-project-id'
 );
 
-let app = null;
-let db = null;
-let auth = null;
-let googleProvider = null;
+let app: FirebaseApp | null = null;
+let db: Firestore | null = null;
+let auth: Auth | null = null;
+let googleProvider: GoogleAuthProvider | null = null;
 
 if (isFirebaseConfigured) {
   try {
@@ -34,7 +34,7 @@ if (isFirebaseConfigured) {
     auth = getAuth(app);
     googleProvider = new GoogleAuthProvider();
   } catch (error) {
-    console.warn('[Firebase] Initialization failed, using local mode:', error);
+    console.warn('[Firebase] Initialization failed:', error);
   }
 }
 
