@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { LanguageContentItem, LanguageCode } from '../types/types';
+import { playKoreanTTS } from '../utils/ttsHelper';
 
 interface Props {
   item: LanguageContentItem;
@@ -27,24 +28,16 @@ export const LanguageContentCard: React.FC<Props> = ({
 
   const translation = item.translations[translationKey] || item.translations.en;
 
-  // Web Speech API (speechSynthesis) 한국어 음성 재생
+  // 듀얼 엔진 음성 재생 핸들러
   const handlePlayTTS = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!('speechSynthesis' in window)) {
-      alert('브라우저가 TTS 음성 재생을 지원하지 않습니다.');
-      return;
-    }
+    if (isPlayingAudio) return;
 
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(item.audioScript || item.koreanText);
-    utterance.lang = 'ko-KR';
-    utterance.rate = 0.85;
-
-    utterance.onstart = () => setIsPlayingAudio(true);
-    utterance.onend = () => setIsPlayingAudio(false);
-    utterance.onerror = () => setIsPlayingAudio(false);
-
-    window.speechSynthesis.speak(utterance);
+    playKoreanTTS(
+      item.audioScript || item.koreanText,
+      () => setIsPlayingAudio(true),
+      () => setIsPlayingAudio(false)
+    );
   };
 
   const isFandom = item.category === 'fandomTerms';
@@ -105,16 +98,18 @@ export const LanguageContentCard: React.FC<Props> = ({
             style={{
               background: isPlayingAudio ? '#eab308' : '#1e2433',
               color: isPlayingAudio ? '#000' : '#ffd700',
-              border: '1px solid #ca8a04',
+              border: isPlayingAudio ? '2px solid #fef08a' : '1px solid #ca8a04',
               borderRadius: '50%',
-              width: '42px',
-              height: '42px',
+              width: '44px',
+              height: '44px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              fontSize: '16px',
+              fontSize: '18px',
               transition: 'all 0.15s ease',
+              boxShadow: isPlayingAudio ? '0 0 16px rgba(234, 179, 8, 0.6)' : 'none',
+              transform: isPlayingAudio ? 'scale(1.1)' : 'scale(1)',
               flexShrink: 0
             }}
           >
