@@ -1,34 +1,41 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 
 const apiKey = import.meta.env.VITE_FIREBASE_API_KEY || '';
 const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || '';
 
-// 실제 유효한 키인지 확인 (임시 문자열 '여기에'나 'your_' 배제)
 export const isFirebaseConfigured = Boolean(
   apiKey &&
+  apiKey !== 'your-api-key' &&
+  !apiKey.startsWith('AIzaSy...') &&
   projectId &&
-  !apiKey.includes('여기에') &&
-  !apiKey.includes('your_') &&
-  !projectId.includes('여기에')
+  projectId !== 'your-project-id'
 );
 
-let dbInstance: Firestore | null = null;
+let app = null;
+let db = null;
+let auth = null;
+let googleProvider = null;
 
 if (isFirebaseConfigured) {
   try {
-    const app = getApps().length > 0 ? getApp() : initializeApp({
-      apiKey,
+    const firebaseConfig = {
+      apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
       authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-      projectId,
+      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
       storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
       messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
       appId: import.meta.env.VITE_FIREBASE_APP_ID
-    });
-    dbInstance = getFirestore(app);
+    };
+
+    app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+    db = getFirestore(app);
+    auth = getAuth(app);
+    googleProvider = new GoogleAuthProvider();
   } catch (error) {
-    console.warn('[Firebase] Fallback to Local Mock Mode.', error);
+    console.warn('[Firebase] Initialization failed, using local mode:', error);
   }
 }
 
-export const db = dbInstance;
+export { app, db, auth, googleProvider };

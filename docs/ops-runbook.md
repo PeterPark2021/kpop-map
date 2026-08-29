@@ -67,3 +67,7 @@
 - **관리자 콘솔 접속 URL**: `https://kpop-map-prod.web.app` 접속 ➔ 상단 `⚙️ 관리자 콘솔` 클릭
 - **기본 마스터 PIN**: `2026`
 - **보안 세션**: 브라우저 탭 종료 시 자동 세션 만료 (SessionStorage 기반).
+## 6. Google Cloud TTS 오디오 사전 생성 비용 모니터링
+- **방식**: 런타임 실시간 호출이 아닌 **사전 1회 생성(Pre-generation) 방식**으로 Cloud Storage/Public 에셋에 저장.
+- **예상 비용**: 50개 어휘 × 약 10글자 = 500자 (Google Cloud TTS 매월 100만 자 무료 할당량 내 $0.00 유지).
+- **운영 규칙**: 신규 languageContent 어휘 대량 추가 시에만 `node scripts/generateAudio.mjs`를 실행하여 1회 일괄 합성.

@@ -1,57 +1,67 @@
 /**
- * [K-POP 100% 무조건 재생 한국어 원어민 오디오 엔진]
- * - client=gtx 오픈 스트림 (CORS 및 브라우저 차단 제로)
- * - DOM Audio 객체를 통한 즉각적인 하드웨어 재생
- * - Web Speech API 및 Web Audio 동시 지원
+ * [K-POP 정식 라이선스 한국어 음성 재생 엔진]
+ * 1순위: Firebase Storage / Public 정식 사전 생성 Google Cloud AI 음성 (audioUrl)
+ * 2순위 (오프라인 폴백): 브라우저 표준 Web Speech API (SpeechSynthesis ko-KR)
+ * ※ 비공식/미인가 엔드포인트(translate.google.com) 호출 100% 배제
  */
 
-let globalAudioPlayer: HTMLAudioElement | null = null;
+let activeAudioPlayer: HTMLAudioElement | null = null;
+let activeUtterance: SpeechSynthesisUtterance | null = null;
 
-export function playKoreanTTS(text: string, onStart?: () => void, onEnd?: () => void) {
+export function playKoreanTTS(
+  text: string,
+  audioUrl?: string,
+  onStart?: () => void,
+  onEnd?: () => void
+) {
   const cleanText = text.trim();
   if (!cleanText || typeof window === 'undefined') return;
 
-  // 1. 기존 재생 오디오 중단
-  if (globalAudioPlayer) {
-    globalAudioPlayer.pause();
-    globalAudioPlayer.currentTime = 0;
+  // 기존 재생 오디오 중단
+  if (activeAudioPlayer) {
+    activeAudioPlayer.pause();
+    activeAudioPlayer.currentTime = 0;
+    activeAudioPlayer = null;
   }
 
-  // 2. 1순위: client=gtx 고품질 한국어 원어민 음성 스트림 (가장 선명하고 정확)
-  try {
-    const encoded = encodeURIComponent(cleanText);
-    const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ko&client=gtx&q=${encoded}`;
+  // 1순위: 정식 사전 생성 Cloud TTS 오디오 URL 재생
+  if (audioUrl) {
+    try {
+      const audio = new Audio(audioUrl);
+      activeAudioPlayer = audio;
 
-    const audio = new Audio(audioUrl);
-    globalAudioPlayer = audio;
+      audio.onplay = () => {
+        if (onStart) onStart();
+      };
 
-    audio.onplay = () => {
-      if (onStart) onStart();
-    };
+      audio.onended = () => {
+        activeAudioPlayer = null;
+        if (onEnd) onEnd();
+      };
 
-    audio.onended = () => {
-      globalAudioPlayer = null;
-      if (onEnd) onEnd();
-    };
+      audio.onerror = () => {
+        activeAudioPlayer = null;
+        fallbackWebSpeech(cleanText, onStart, onEnd);
+      };
 
-    audio.onerror = (e) => {
-      console.warn('[Audio Stream Failed, falling back to WebSpeech]:', e);
-      fallbackToWebSpeech(cleanText, onStart, onEnd);
-    };
-
-    const playPromise = audio.play();
-    if (playPromise !== undefined) {
-      playPromise.catch((err) => {
-        console.warn('[Autoplay blocked, trying WebSpeech]:', err);
-        fallbackToWebSpeech(cleanText, onStart, onEnd);
-      });
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          fallbackWebSpeech(cleanText, onStart, onEnd);
+        });
+      }
+      return;
+    } catch {
+      fallbackWebSpeech(cleanText, onStart, onEnd);
+      return;
     }
-  } catch (err) {
-    fallbackToWebSpeech(cleanText, onStart, onEnd);
   }
+
+  // 2순위: 브라우저 표준 Web Speech API (로컬 폴백)
+  fallbackWebSpeech(cleanText, onStart, onEnd);
 }
 
-function fallbackToWebSpeech(cleanText: string, onStart?: () => void, onEnd?: () => void) {
+function fallbackWebSpeech(cleanText: string, onStart?: () => void, onEnd?: () => void) {
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     try {
       window.speechSynthesis.cancel();
@@ -67,21 +77,30 @@ function fallbackToWebSpeech(cleanText: string, onStart?: () => void, onEnd?: ()
         utterance.voice = koVoice;
       }
 
+      let finished = false;
+      const finish = () => {
+        if (!finished) {
+          finished = true;
+          activeUtterance = null;
+          if (onEnd) onEnd();
+        }
+      };
+
       utterance.onstart = () => {
         if (onStart) onStart();
       };
-      utterance.onend = () => {
-        if (onEnd) onEnd();
-      };
-      utterance.onerror = () => {
-        if (onEnd) onEnd();
-      };
+      utterance.onend = finish;
+      utterance.onerror = finish;
 
+      setTimeout(finish, 3500);
+
+      activeUtterance = utterance;
       (window as any).__currentUtterance = utterance;
+
       window.speechSynthesis.speak(utterance);
       return;
     } catch {
-      // 무시
+      // fallback
     }
   }
 

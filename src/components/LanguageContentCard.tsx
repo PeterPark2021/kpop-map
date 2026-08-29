@@ -27,13 +27,13 @@ export const LanguageContentCard: React.FC<Props> = ({
 
   const translation = item.translations[translationKey] || item.translations.en;
 
-  // 동기식 즉각 발음 재생
   const handlePlayTTS = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     playKoreanTTS(
       item.audioScript || item.koreanText,
+      item.audioUrl,
       () => setIsPlayingAudio(true),
       () => setIsPlayingAudio(false)
     );
@@ -56,7 +56,6 @@ export const LanguageContentCard: React.FC<Props> = ({
       }}
     >
       <div>
-        {/* 상단: 카테고리 태그 및 레벨 */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
           <span
             style={{
@@ -80,7 +79,6 @@ export const LanguageContentCard: React.FC<Props> = ({
           </span>
         </div>
 
-        {/* 메인: 한국어 단어 + TTS 재생 버튼 + 로마자 발음 */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
           <div>
             <h3 style={{ margin: 0, fontSize: variant === 'compact' ? '1.5rem' : '1.9rem', color: '#f8fafc', fontWeight: 900 }}>
@@ -94,7 +92,7 @@ export const LanguageContentCard: React.FC<Props> = ({
           <button
             type="button"
             onClick={handlePlayTTS}
-            title="한국어 발음 듣기"
+            title="Google Cloud AI 음성 듣기"
             style={{
               background: isPlayingAudio ? '#eab308' : '#1e2433',
               color: isPlayingAudio ? '#000' : '#ffd700',
@@ -117,7 +115,6 @@ export const LanguageContentCard: React.FC<Props> = ({
           </button>
         </div>
 
-        {/* 번역된 의미 블록 */}
         <div style={{ marginTop: '16px', padding: '12px 14px', background: '#0a0d14', borderRadius: '10px', borderLeft: '3px solid #eab308' }}>
           <div style={{ fontWeight: 800, color: '#fef08a', fontSize: '13px', marginBottom: '3px' }}>
             {translation.term}
@@ -128,7 +125,6 @@ export const LanguageContentCard: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* 하단: 문화적 맥락 (Cultural Note) 토글 */}
       {item.culturalNote && (
         <div style={{ marginTop: '14px', borderTop: '1px solid #1e2433', paddingTop: '10px' }}>
           <button
