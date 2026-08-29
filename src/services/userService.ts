@@ -4,18 +4,17 @@ import {
   signInWithEmailAndPassword, 
   signInWithPopup, 
   signOut, 
-  onAuthStateChanged,
-  User as FirebaseUser 
+  onAuthStateChanged 
 } from 'firebase/auth';
 import { db, auth, googleProvider, isFirebaseConfigured } from '../lib/firebase';
 import { UserProfile, UserNotificationPrefs } from '../types/types';
 
 export function checkIsAge14OrOlder(birthYear: number, birthMonth: number, currentDate: Date = new Date()): boolean {
   const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth() + 1; // 1 ~ 12
+  const currentMonth = currentDate.getMonth() + 1;
   let age = currentYear - birthYear;
   if (currentMonth < birthMonth) {
-    age--; // ?앹씪 ?ъ씠 ?꾩쭅 ??吏??
+    age--;
   }
   return age >= 14;
 }
@@ -73,9 +72,6 @@ class UserService {
     return null;
   }
 
-  /**
-   * [?대찓???뚯썝媛??- 留?14???섏씠 寃利??ы븿]
-   */
   public async signupWithEmail(
     email: string,
     pass: string,
@@ -83,20 +79,18 @@ class UserService {
     birthYear: number,
     birthMonth: number
   ): Promise<{ success: boolean; error?: string }> {
-    // 1. ?섏씠 寃利?(留?14??誘몃쭔 李⑤떒)
     if (!checkIsAge14OrOlder(birthYear, birthMonth)) {
       return { 
         success: false, 
-        error: 'UNDER_14_BLOCKED: ???쒕퉬?ㅻ뒗 留?14???댁긽留?媛?낇븯?????덉뒿?덈떎.' 
+        error: 'UNDER_14_BLOCKED: 이 서비스는 만 14세 이상만 가입하실 수 있습니다.' 
       };
     }
 
     if (!isFirebaseConfigured || !auth || !db) {
-      // ?곕え 紐⑤뱶
       const demoProfile: UserProfile = {
         uid: `demo_${Date.now()}`,
         email,
-        displayName: displayName || 'K-POP ??,
+        displayName: displayName || 'K-POP Fan',
         favoriteArtistIds: ['bigbang-gd'],
         ageVerified: true,
         ageVerifiedAt: new Date().toISOString(),
@@ -135,12 +129,9 @@ class UserService {
     }
   }
 
-  /**
-   * [Google ?뚯뀥 濡쒓렇??諛?理쒖큹 媛?낆옄 ?섏씠 寃利?
-   */
   public async signInWithGoogle(): Promise<{ success: boolean; requiresAgeVerification?: boolean; uid?: string; email?: string; displayName?: string; error?: string }> {
     if (!isFirebaseConfigured || !auth || !googleProvider || !db) {
-      return this.signupWithEmail('demo_google@fan.com', '', 'Google ??, 2000, 1);
+      return this.signupWithEmail('demo_google@fan.com', '', 'Google Fan', 2000, 1);
     }
 
     try {
@@ -149,13 +140,12 @@ class UserService {
       const existing = await this.fetchUserProfile(user.uid);
 
       if (!existing || !existing.ageVerified) {
-        // 理쒖큹 媛?낆옄: ?섏씠 ?뺤씤 ?④퀎 ?꾩슂
         return {
           success: true,
           requiresAgeVerification: true,
           uid: user.uid,
           email: user.email || '',
-          displayName: user.displayName || 'Google ??
+          displayName: user.displayName || 'Google Fan'
         };
       }
 
@@ -166,9 +156,6 @@ class UserService {
     }
   }
 
-  /**
-   * [?뚯뀥 濡쒓렇??媛?낆옄 ?섏씠 ?뺤씤 ?꾨즺 諛??꾨줈???앹꽦]
-   */
   public async completeSocialSignup(
     uid: string,
     email: string,
@@ -177,11 +164,10 @@ class UserService {
     birthMonth: number
   ): Promise<{ success: boolean; error?: string }> {
     if (!checkIsAge14OrOlder(birthYear, birthMonth)) {
-      // 留?14??誘몃쭔??寃쎌슦 ?앹꽦??Auth ?몄뀡 濡쒓렇?꾩썐
       if (auth) await signOut(auth);
       return { 
         success: false, 
-        error: 'UNDER_14_BLOCKED: ???쒕퉬?ㅻ뒗 留?14???댁긽留??댁슜?섏떎 ???덉뒿?덈떎.' 
+        error: 'UNDER_14_BLOCKED: 이 서비스는 만 14세 이상만 이용하실 수 있습니다.' 
       };
     }
 
@@ -209,7 +195,7 @@ class UserService {
 
   public async loginWithEmail(email: string, pass: string): Promise<{ success: boolean; error?: string }> {
     if (!isFirebaseConfigured || !auth) {
-      return this.signupWithEmail(email, '', '濡쒓렇????, 2000, 1);
+      return this.signupWithEmail(email, '', 'K-POP Fan', 2000, 1);
     }
     try {
       const res = await signInWithEmailAndPassword(auth, email, pass);
@@ -230,7 +216,7 @@ class UserService {
 
   public async toggleFavoriteArtist(artistId: string): Promise<boolean> {
     if (!this.currentProfile) return false;
-    const current = this.currentProfile.favoriteArtistIds || [];
+    const current: string[] = this.currentProfile.favoriteArtistIds || [];
     const isFav = current.includes(artistId);
     const updated = isFav ? current.filter((id: string) => id !== artistId) : [...current, artistId];
 
@@ -281,7 +267,7 @@ class UserService {
     }
   }
 
-  public loginDemoUser(displayName = 'K-POP ?댁젙??): UserProfile {
+  public loginDemoUser(displayName = 'K-POP Fan'): UserProfile {
     const demo: UserProfile = {
       uid: 'demo_user_2026',
       email: 'demo@kpop-tour.com',
