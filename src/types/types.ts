@@ -27,6 +27,7 @@ export interface TourEvent {
   status: 'scheduled' | 'ticketOpen' | 'inProgress' | 'completed';
   isHighlight?: boolean;
   ticketUrl?: string;
+  notifiedStatuses?: string[]; // 알림 중복 발송 방지 배열
 }
 
 export interface TourNewsFact {
@@ -74,7 +75,7 @@ export interface LanguageContentItem {
   koreanText: string;
   romanization: string;
   audioScript: string;
-  audioUrl?: string; // 정식 Cloud TTS 사전 생성 오디오 URL
+  audioUrl?: string;
   translations: {
     en: LanguageContentTranslation;
     ja: LanguageContentTranslation;
@@ -84,4 +85,31 @@ export interface LanguageContentItem {
   culturalNote?: string;
   reviewStatus: ReviewStatus;
   createdAt: string;
+}
+
+// ----------------------------------------------------
+// 일반 회원 (User Account) & 알림 구독 스키마
+// ----------------------------------------------------
+export interface UserNotificationPrefs {
+  emailEnabled: boolean;
+  language: LanguageCode;
+  consentGivenAt: string | null;
+}
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  favoriteArtistIds: string[];
+  notificationPrefs: UserNotificationPrefs;
+  createdAt: string;
+}
+
+export interface NotificationLog {
+  logId: string;
+  userId: string;
+  eventId: string;
+  status: string;
+  sentAt: string;
+  channel: 'email';
 }
