@@ -59,3 +59,14 @@
   1. **가입 플로우**: 이메일 가입 및 최초 Google 소셜 로그인 시 출생년월 1회 검증 강제. 만 14세 미만은 가입 차단.
   2. **데이터 최소화**: 출생년월은 나이 계산 후 즉시 폐기하며, Firestore에는 `ageVerified: true`와 `ageVerifiedAt` 플래그만 보관 (법적 책임 및 침해 위험 최소화).
   3. **기존 사용자 마이그레이션**: 기존 가입자는 이전 정책 통과자로 간주하여 `ageVerified: true`로 일괄 자동 인정(Grandfathering).
+---
+
+## ADR-010: 지도 타일 레이어 교체(ESRI) 및 정직한 비동기 토스트 체계 수립
+- **상태**: 승인됨 (Accepted)
+- **일자**: 2026-08-30
+- **진단 정정**:
+  - ADR-009의 "API 필요 홀로그램" 관찰 결과는 Firestore 데이터 부재가 아니라, CartoDB 지도 타일 레이어의 정책 변경으로 인한 "API KEY REQUIRED" 타일 워터마크였음.
+- **해결 조치**:
+  1. `InteractiveMap.tsx`의 타일 레이어를 완전 무료/무제한 다크 캔버스인 **ESRI World Dark Gray MapServer**로 전면 교체하여 워터마크 영구 제거.
+  2. `App.tsx`의 `handleStatusToggle` 및 모든 검수 액션을 `try { await write(); showToast('성공') } catch { showToast('실패') }` 패턴으로 전면 재설계하여 거짓 성공 토스트 제거.
+  3. 공개 지도의 핀 팝업에서 **관리자 클레임(`isAdmin: true`)이 없는 비로그인/일반 방문자에게는 [상태 토글] 버튼을 숨겨 읽기 전용으로 제한**.

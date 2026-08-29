@@ -6,6 +6,7 @@ import { TourEvent, LanguageCode, LocalizedString } from '../types/types';
 interface Props {
   events: TourEvent[];
   lang: LanguageCode;
+  isAdmin?: boolean;
   onSelectEvent?: (event: TourEvent) => void;
 }
 
@@ -49,13 +50,13 @@ function MapBoundsManager({ events }: { events: TourEvent[] }) {
   return null;
 }
 
-export const InteractiveMap: React.FC<Props> = ({ events, lang, onSelectEvent }) => {
+export const InteractiveMap: React.FC<Props> = ({ events, lang, isAdmin = false, onSelectEvent }) => {
   const polylineCoords = events.map(e => [e.coordinates.lat, e.coordinates.lng] as [number, number]);
 
   const getVenueDisplay = (venue: string | LocalizedString | undefined): string => {
     if (!venue) return '';
     if (typeof venue === 'string') return venue;
-    return venue[lang] || venue.en || '';
+    return venue[lang] || venue.en || venue.ko || '';
   };
 
   return (
@@ -67,7 +68,12 @@ export const InteractiveMap: React.FC<Props> = ({ events, lang, onSelectEvent })
         style={{ height: '100%', width: '100%', background: '#0b0e14' }}
         attributionControl={false}
       >
-        <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+        {/* 🗺️ 워터마크가 전혀 없는 안정적인 ESRI World Dark Gray Basemap */}
+        <TileLayer
+          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+          attribution="&copy; Esri, DeLorme, NAVTEQ"
+          maxZoom={16}
+        />
         <MapBoundsManager events={events} />
 
         {polylineCoords.length > 1 && (
@@ -85,8 +91,8 @@ export const InteractiveMap: React.FC<Props> = ({ events, lang, onSelectEvent })
         {events.map((ev) => {
           const isLive = ev.status === 'inProgress';
           const icon = isLive ? customLiveIcon : customGoldIcon;
-          const cityName = ev.city[lang] || ev.city.en;
-          const artistName = ev.artistName[lang] || ev.artistName.en || 'K-POP';
+          const cityName = ev.city[lang] || ev.city.en || ev.city.ko || 'City';
+          const artistName = ev.artistName[lang] || ev.artistName.en || ev.artistName.ko || 'K-POP';
           const venueDisplay = getVenueDisplay(ev.venueName);
 
           return (
@@ -120,10 +126,11 @@ export const InteractiveMap: React.FC<Props> = ({ events, lang, onSelectEvent })
                     {venueDisplay}
                   </p>
                   <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '8px' }}>
-                    📅 {new Date(ev.eventDate).toLocaleDateString()} ({ev.showCount}회 공연)
+                    📅 {new Date(ev.eventDate).toLocaleDateString()}
                   </div>
 
-                  {onSelectEvent && (
+                  {/* 🔒 상태 토글 버튼은 오직 관리자(isAdmin)에게만 표시 */}
+                  {isAdmin && onSelectEvent && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -142,7 +149,7 @@ export const InteractiveMap: React.FC<Props> = ({ events, lang, onSelectEvent })
                         fontSize: '11px'
                       }}
                     >
-                      ⚡ 상태 토글 (실시간 동기화)
+                      ⚡ [관리자] 상태 토글
                     </button>
                   )}
                 </div>

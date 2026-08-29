@@ -1,30 +1,42 @@
-import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, query, where } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '../lib/firebase';
 import { TourEvent, TourNewsFact, LanguageContentItem, ReviewStatus } from '../types/types';
 import { initialBigBangTourEvents, sampleNewsFacts } from '../data/initialData';
 import { sampleLanguageContents } from '../data/sampleLanguageContent';
 
 class TourService {
-  private mockEvents: TourEvent[] = initialBigBangTourEvents;
-  private mockNews: TourNewsFact[] = sampleNewsFacts;
-  private mockLang: LanguageContentItem[] = sampleLanguageContents;
-
-  public subscribeToTourEvents(callback: (events: TourEvent[]) => void): () => void {
+  public subscribeToTourEvents(
+    callback: (events: TourEvent[]) => void,
+    artistId?: string
+  ): () => void {
     if (isFirebaseConfigured && db) {
       const eventsCol = collection(db, 'events');
-      return onSnapshot(eventsCol, (snapshot) => {
+      const q = artistId ? query(eventsCol, where('artistId', '==', artistId)) : eventsCol;
+
+      return onSnapshot(q, (snapshot) => {
         if (!snapshot.empty) {
           const events = snapshot.docs.map(d => d.data() as TourEvent);
           callback(events);
         } else {
-          callback(this.mockEvents);
+          if (import.meta.env.DEV) {
+            callback(initialBigBangTourEvents);
+          } else {
+            callback([]);
+          }
         }
       }, (err) => {
-        console.warn('[Firestore] Events fallback:', err);
-        callback(this.mockEvents);
+        console.error('[Firestore] Events listener error:', err);
+        if (import.meta.env.DEV) {
+          callback(initialBigBangTourEvents);
+        } else {
+          callback([]);
+        }
       });
     }
-    callback(this.mockEvents);
+
+    if (import.meta.env.DEV) {
+      callback(initialBigBangTourEvents);
+    }
     return () => {};
   }
 
@@ -34,15 +46,9 @@ class TourService {
 
   public async updateEventStatus(eventId: string, status: TourEvent['status']): Promise<void> {
     if (isFirebaseConfigured && db) {
-      try {
-        const eventRef = doc(db, 'events', eventId);
-        await updateDoc(eventRef, { status });
-      } catch (err) {
-        console.warn('[Firestore] Update event error:', err);
-      }
+      const eventRef = doc(db, 'events', eventId);
+      await updateDoc(eventRef, { status });
     }
-    const event = this.mockEvents.find(e => e.eventId === eventId);
-    if (event) event.status = status;
   }
 
   public subscribeToNewsFacts(artistId: string, lang: string, callback: (news: TourNewsFact[]) => void): () => void {
@@ -58,19 +64,15 @@ class TourService {
           );
           callback(filtered);
         } else {
-          callback(this.mockNews);
+          if (import.meta.env.DEV) callback(sampleNewsFacts);
+          else callback([]);
         }
-      }, (err) => {
-        console.warn('[Firestore] News fallback:', err);
-        callback(this.mockNews);
+      }, () => {
+        if (import.meta.env.DEV) callback(sampleNewsFacts);
+        else callback([]);
       });
     }
-    const filtered = this.mockNews.filter(n =>
-      n.reviewStatus === 'approved' &&
-      (n.artistId === artistId || artistId === 'bigbang-gd') &&
-      (n.language === lang || n.language === 'ko')
-    );
-    callback(filtered.length > 0 ? filtered : this.mockNews);
+    if (import.meta.env.DEV) callback(sampleNewsFacts);
     return () => {};
   }
 
@@ -80,17 +82,8 @@ class TourService {
 
   public async updateNewsReviewStatus(newsId: string, reviewStatus: ReviewStatus, reason?: string): Promise<void> {
     if (isFirebaseConfigured && db) {
-      try {
-        const newsRef = doc(db, 'newsFacts', newsId);
-        await updateDoc(newsRef, { reviewStatus, rejectionReason: reason || null });
-      } catch (err) {
-        console.warn('[Firestore] Update news status error:', err);
-      }
-    }
-    const item = this.mockNews.find(n => n.newsId === newsId);
-    if (item) {
-      item.reviewStatus = reviewStatus;
-      if (reason) item.rejectionReason = reason;
+      const newsRef = doc(db, 'newsFacts', newsId);
+      await updateDoc(newsRef, { reviewStatus, rejectionReason: reason || null });
     }
   }
 
@@ -102,28 +95,23 @@ class TourService {
           const items = snapshot.docs.map(d => d.data() as LanguageContentItem);
           callback(items);
         } else {
-          callback(this.mockLang);
+          if (import.meta.env.DEV) callback(sampleLanguageContents);
+          else callback([]);
         }
-      }, (err) => {
-        console.warn('[Firestore] Language content fallback:', err);
-        callback(this.mockLang);
+      }, () => {
+        if (import.meta.env.DEV) callback(sampleLanguageContents);
+        else callback([]);
       });
     }
-    callback(this.mockLang);
+    if (import.meta.env.DEV) callback(sampleLanguageContents);
     return () => {};
   }
 
   public async updateLanguageReviewStatus(contentId: string, status: ReviewStatus): Promise<void> {
     if (isFirebaseConfigured && db) {
-      try {
-        const docRef = doc(db, 'languageContent', contentId);
-        await updateDoc(docRef, { reviewStatus: status });
-      } catch (err) {
-        console.warn('[Firestore] Update lang review error:', err);
-      }
+      const docRef = doc(db, 'languageContent', contentId);
+      await updateDoc(docRef, { reviewStatus: status });
     }
-    const item = this.mockLang.find(l => l.contentId === contentId);
-    if (item) item.reviewStatus = status;
   }
 }
 

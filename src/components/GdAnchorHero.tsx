@@ -1,55 +1,18 @@
-﻿import React from 'react';
+import React from 'react';
 import { ArtistProfile, LanguageCode } from '../types/types';
-
-interface Props {
-  profile: ArtistProfile;
-  lang: LanguageCode;
-  onExploreAll: () => void;
-}
-
+interface Props { profile: ArtistProfile; lang: LanguageCode; onExploreAll: () => void; }
 export const GdAnchorHero: React.FC<Props> = ({ profile, lang, onExploreAll }) => {
+  const artistName = profile.name[lang] || profile.name.en || profile.name.ko || 'G-DRAGON';
+  const descriptionText = profile.description ? (profile.description[lang] || profile.description.ko || profile.description.en || '') : '';
   return (
-    <section style={{
-      background: 'linear-gradient(135deg, #181308 0%, #2e2105 50%, #0d0e12 100%)',
-      border: '1px solid #eab308',
-      borderRadius: '16px',
-      padding: '36px',
-      marginBottom: '28px',
-      boxShadow: '0 10px 30px rgba(234, 179, 8, 0.15)'
-    }}>
-      <span style={{
-        background: '#eab308',
-        color: '#000',
-        padding: '4px 10px',
-        fontWeight: 800,
-        borderRadius: '6px',
-        fontSize: '12px',
-        letterSpacing: '1px'
-      }}>
-        ★ 2026 GLOBAL ANCHOR
-      </span>
-      <h1 style={{ fontSize: '2.4rem', margin: '16px 0 8px 0', color: '#fef08a' }}>
-        {profile.name[lang] || profile.name.ko}
-      </h1>
-      <p style={{ color: '#cbd5e1', maxWidth: '680px', lineHeight: '1.6', fontSize: '1.05rem' }}>
-        {profile.description[lang] || profile.description.ko}
-      </p>
-      <div style={{ marginTop: '24px' }}>
-        <button
-          onClick={onExploreAll}
-          style={{
-            background: '#eab308',
-            color: '#000',
-            fontWeight: 700,
-            border: 'none',
-            padding: '12px 28px',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
-        >
-          전체 K-POP 월드투어 맵 보기 ➔
-        </button>
+    <section style={{ background: 'linear-gradient(135deg, #182030 0%, #0b0e14 100%)', border: '1px solid #ffd70044', borderRadius: '16px', padding: '24px', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <span style={{ fontSize: '11px', background: '#ffd700', color: '#000', padding: '3px 8px', borderRadius: '4px', fontWeight: 800 }}>FEATURED ANCHOR</span>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#f8fafc', margin: '8px 0 4px 0' }}>{artistName}</h2>
+          <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>{descriptionText}</p>
+        </div>
+        <button onClick={onExploreAll} style={{ background: 'linear-gradient(135deg, #ffd700, #eab308)', color: '#000', border: 'none', padding: '10px 20px', borderRadius: '20px', fontWeight: 800, cursor: 'pointer' }}>모든 아티스트 투어 보기 →</button>
       </div>
     </section>
   );

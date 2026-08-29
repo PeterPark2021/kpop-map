@@ -1,162 +1,33 @@
 import React, { useState } from 'react';
 import { LanguageContentItem, LanguageCode } from '../types/types';
-import { playKoreanTTS } from '../utils/ttsHelper';
-
-interface Props {
-  item: LanguageContentItem;
-  currentLanguage: LanguageCode;
-  variant?: 'compact' | 'expanded';
-}
-
-export const LanguageContentCard: React.FC<Props> = ({
-  item,
-  currentLanguage,
-  variant = 'compact'
-}) => {
+import { playTtsAudio } from '../utils/ttsHelper';
+interface Props { item: LanguageContentItem; currentLanguage: LanguageCode; }
+export const LanguageContentCard: React.FC<Props> = ({ item, currentLanguage }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isNoteOpen, setIsNoteOpen] = useState(false);
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-
-  const translationKey =
-    currentLanguage === 'ja'
-      ? 'ja'
-      : currentLanguage === 'zh'
-      ? 'zh-TW'
-      : currentLanguage === 'sea'
-      ? 'th'
-      : 'en';
-
-  const translation = item.translations[translationKey] || item.translations.en;
-
-  const handlePlayTTS = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    playKoreanTTS(
-      item.audioScript || item.koreanText,
-      item.audioUrl,
-      () => setIsPlayingAudio(true),
-      () => setIsPlayingAudio(false)
-    );
+  const getMeaning = () => {
+    if (item.translations) {
+      if (currentLanguage === 'ja' && item.translations.ja) return item.translations.ja.meaning;
+      if (currentLanguage === 'zh' && item.translations['zh-TW']) return item.translations['zh-TW'].meaning;
+      if (item.translations.en) return item.translations.en.meaning;
+    }
+    return item.englishMeaning || item.koreanPhrase || '';
   };
-
-  const isFandom = item.category === 'fandomTerms';
-
+  const handlePlayAudio = () => {
+    setIsPlaying(true);
+    playTtsAudio(item.koreanText || item.koreanPhrase || item.audioScript || '', item.audioUrl, () => setIsPlaying(false));
+  };
   return (
-    <div
-      style={{
-        background: '#121622',
-        borderRadius: '16px',
-        border: isPlayingAudio ? '1px solid #eab308' : '1px solid #232a3d',
-        padding: variant === 'compact' ? '20px' : '28px',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        boxShadow: isPlayingAudio ? '0 0 20px rgba(234, 179, 8, 0.25)' : '0 8px 24px rgba(0,0,0,0.4)',
-        transition: 'all 0.15s ease'
-      }}
-    >
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-          <span
-            style={{
-              background: isFandom ? 'rgba(234, 179, 8, 0.15)' : 'rgba(56, 189, 248, 0.15)',
-              color: isFandom ? '#fde047' : '#38bdf8',
-              border: isFandom ? '1px solid rgba(234, 179, 8, 0.4)' : '1px solid rgba(56, 189, 248, 0.4)',
-              padding: '4px 10px',
-              borderRadius: '20px',
-              fontSize: '11px',
-              fontWeight: 800,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}
-          >
-            {isFandom ? '💬 팬덤 용어' : '🔊 의성어·의태어'}
-          </span>
-
-          <span style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>
-            ● {item.level}
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: variant === 'compact' ? '1.5rem' : '1.9rem', color: '#f8fafc', fontWeight: 900 }}>
-              {item.koreanText}
-            </h3>
-            <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '2px', fontWeight: 600, letterSpacing: '0.5px' }}>
-              [{item.romanization}]
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={handlePlayTTS}
-            title="Google Cloud AI 음성 듣기"
-            style={{
-              background: isPlayingAudio ? '#eab308' : '#1e2433',
-              color: isPlayingAudio ? '#000' : '#ffd700',
-              border: isPlayingAudio ? '2px solid #fef08a' : '1px solid #ca8a04',
-              borderRadius: '50%',
-              width: '46px',
-              height: '46px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              fontSize: '20px',
-              transition: 'all 0.15s ease',
-              boxShadow: isPlayingAudio ? '0 0 16px rgba(234, 179, 8, 0.6)' : 'none',
-              transform: isPlayingAudio ? 'scale(1.12)' : 'scale(1)',
-              flexShrink: 0
-            }}
-          >
-            {isPlayingAudio ? '🔊' : '🔈'}
-          </button>
-        </div>
-
-        <div style={{ marginTop: '16px', padding: '12px 14px', background: '#0a0d14', borderRadius: '10px', borderLeft: '3px solid #eab308' }}>
-          <div style={{ fontWeight: 800, color: '#fef08a', fontSize: '13px', marginBottom: '3px' }}>
-            {translation.term}
-          </div>
-          <div style={{ fontSize: '12px', color: '#cbd5e1', lineHeight: '1.5' }}>
-            {translation.meaning}
-          </div>
-        </div>
+    <div style={{ background: '#161b26', borderRadius: '14px', padding: '20px', border: '1px solid #283042' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+        {item.category && <span style={{ background: '#1e293b', color: '#ffd700', fontSize: '11px', padding: '3px 8px', borderRadius: '6px', fontWeight: 700 }}>#{item.category}</span>}
+        <button onClick={handlePlayAudio} disabled={isPlaying} style={{ background: isPlaying ? '#ca8a04' : '#1e2433', color: '#ffd700', border: '1px solid #ca8a04', borderRadius: '20px', padding: '4px 12px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+          {isPlaying ? '재생중...' : 'AI 음성'}
+        </button>
       </div>
-
-      {item.culturalNote && (
-        <div style={{ marginTop: '14px', borderTop: '1px solid #1e2433', paddingTop: '10px' }}>
-          <button
-            type="button"
-            onClick={() => setIsNoteOpen(!isNoteOpen)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#94a3b8',
-              fontSize: '11px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              padding: 0,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <span>💡 왜 이런 뜻일까요? (Why this meaning?)</span>
-            <span style={{ fontSize: '9px', background: '#283042', color: '#cbd5e1', padding: '1px 5px', borderRadius: '4px' }}>
-              🇰🇷 원문
-            </span>
-            <span style={{ fontSize: '10px' }}>{isNoteOpen ? '▲' : '▼'}</span>
-          </button>
-
-          {isNoteOpen && (
-            <p style={{ margin: '8px 0 0 0', color: '#94a3b8', fontSize: '12px', lineHeight: '1.5', background: '#161b26', padding: '8px 10px', borderRadius: '6px' }}>
-              {item.culturalNote}
-            </p>
-          )}
-        </div>
-      )}
+      <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f8fafc', margin: '4px 0' }}>{item.koreanText || item.koreanPhrase}</h3>
+      <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 10px 0', fontStyle: 'italic' }}>[{item.romanization || item.pronunciation || ''}]</p>
+      <p style={{ fontSize: '14px', color: '#e2e8f0', fontWeight: 600, margin: '0 0 12px 0' }}>👉 {getMeaning()}</p>
     </div>
   );
 };

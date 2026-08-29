@@ -1,71 +1,37 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TourNewsFact } from '../types/types';
-
-interface Props {
-  news: TourNewsFact[];
-}
-
+interface Props { news: TourNewsFact[]; }
 export const NewsFactFeed: React.FC<Props> = ({ news }) => {
+  const [filterOfficial, setFilterOfficial] = useState(false);
+  const displayedNews = filterOfficial ? news.filter(n => n.isOfficial) : news;
   return (
-    <div style={{
-      marginTop: '32px',
-      background: '#12151e',
-      padding: '24px',
-      borderRadius: '16px',
-      border: '1px solid #1e2433',
-      boxShadow: '0 8px 24px rgba(0,0,0,0.3)'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-        <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          📰 저작권 안심 팩트 피드 (Copyright-Safe Fact Feed)
-        </h3>
-        <span style={{ fontSize: '12px', background: '#0369a1', color: '#e0f2fe', padding: '3px 10px', borderRadius: '20px', fontWeight: 600 }}>
-          AI 팩트 추출 & 5개 국어 자동 번역
-        </span>
+    <section style={{ margin: '28px 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+        <h2 style={{ margin: 0, fontSize: '1.4rem', color: '#f8fafc', fontWeight: 800 }}>📰 검증된 투어 팩트 뉴스 ({displayedNews.length}건)</h2>
+        <button onClick={() => setFilterOfficial(!filterOfficial)} style={{ background: filterOfficial ? '#16a34a' : '#1e2433', color: filterOfficial ? '#fff' : '#94a3b8', border: '1px solid #334155', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, cursor: 'pointer' }}>
+          {filterOfficial ? '✓ 공식 보도만 보는 중' : '공식 보도자료 필터'}
+        </button>
       </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {news.map((item) => (
-          <div
-            key={item.newsId}
-            style={{
-              background: '#181d2a',
-              padding: '20px',
-              borderRadius: '12px',
-              border: '1px solid #283042'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-              <strong style={{ color: '#f8fafc', fontSize: '1.05rem' }}>{item.title}</strong>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <span style={{ background: '#334155', color: '#94a3b8', fontSize: '11px', padding: '2px 8px', borderRadius: '4px', textTransform: 'uppercase' }}>
-                  {item.language}
-                </span>
-                {item.isOfficial && (
-                  <span style={{ background: '#059669', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
-                    ✓ 공식 인증 출처
-                  </span>
-                )}
-              </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '14px' }}>
+        {displayedNews.map((item) => (
+          <div key={item.newsId} style={{ background: '#161b26', padding: '18px', borderRadius: '12px', border: '1px solid #232a3d' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ fontSize: '11px', color: '#eab308', fontWeight: 800 }}>{item.sourceName || item.source || 'Official Source'}</span>
+              <span style={{ fontSize: '10px', background: item.isOfficial ? 'rgba(34, 197, 94, 0.2)' : 'rgba(148, 163, 184, 0.2)', color: item.isOfficial ? '#4ade80' : '#94a3b8', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>{item.isOfficial ? '✓ 공식 보도' : '일반 보도'}</span>
             </div>
-
-            <ul style={{ margin: '0 0 12px 0', paddingLeft: '20px', color: '#cbd5e1', fontSize: '14px', lineHeight: '1.7' }}>
-              {(item.factSummary || []).map((fact, idx) => (
-                <li key={idx} style={{ marginBottom: '4px' }}>{fact}</li>
-              ))}
-            </ul>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #232a3d', paddingTop: '10px' }}>
-              <small style={{ color: '#64748b', fontSize: '12px' }}>
-                출처: <strong>{item.sourceName}</strong>
-              </small>
-              <small style={{ color: '#64748b', fontSize: '12px' }}>
-                {new Date(item.publishedAt).toLocaleDateString()}
-              </small>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f8fafc', margin: '0 0 8px 0' }}>{item.title || item.headline}</h3>
+            {item.factSummary && (
+              <ul style={{ margin: '0 0 12px 0', paddingLeft: '18px', fontSize: '12px', color: '#cbd5e1', lineHeight: '1.6' }}>
+                {(item.factSummary || []).map((fact: string, idx: number) => <li key={idx}>{fact}</li>)}
+              </ul>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #1e2433', paddingTop: '10px', marginTop: '10px' }}>
+              <span style={{ fontSize: '11px', color: '#64748b' }}>{item.publishedAt ? new Date(item.publishedAt).toLocaleDateString() : ''}</span>
+              {item.sourceUrl && <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '11px', color: '#ffd700', textDecoration: 'none', fontWeight: 700 }}>원문 보기 ↗</a>}
             </div>
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 };

@@ -5,16 +5,17 @@ import { InteractiveMap } from './InteractiveMap';
 interface Props {
   events: TourEvent[];
   lang: LanguageCode;
+  isAdmin?: boolean;
   onSelectEvent?: (event: TourEvent) => void;
 }
 
-export const WorldTourMap: React.FC<Props> = ({ events, lang, onSelectEvent }) => {
+export const WorldTourMap: React.FC<Props> = ({ events, lang, isAdmin = false, onSelectEvent }) => {
   const [viewTab, setViewTab] = useState<'map' | 'list'>('map');
 
   const getVenueDisplay = (venue: string | LocalizedString | undefined): string => {
     if (!venue) return '';
     if (typeof venue === 'string') return venue;
-    return venue[lang] || venue.en || '';
+    return venue[lang] || venue.en || venue.ko || '';
   };
 
   return (
@@ -25,7 +26,7 @@ export const WorldTourMap: React.FC<Props> = ({ events, lang, onSelectEvent }) =
             🗺️ 글로벌 월드투어 일정 ({events.length}개 도시 순회)
           </h2>
           <span style={{ fontSize: '12px', color: '#94a3b8' }}>
-            골드 핀을 클릭하여 실시간 티켓팅 및 공연 진행 상태를 변경해보세요
+            골드 핀을 클릭하여 도시별 공연장 및 티켓 오픈 일정을 확인하세요
           </span>
         </div>
 
@@ -64,13 +65,13 @@ export const WorldTourMap: React.FC<Props> = ({ events, lang, onSelectEvent }) =
       </div>
 
       {viewTab === 'map' ? (
-        <InteractiveMap events={events} lang={lang} onSelectEvent={onSelectEvent} />
+        <InteractiveMap events={events} lang={lang} isAdmin={isAdmin} onSelectEvent={onSelectEvent} />
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
           {events.map(ev => {
-            const cityName = ev.city[lang] || ev.city.en;
+            const cityName = ev.city[lang] || ev.city.en || ev.city.ko || 'City';
             const venueDisplay = getVenueDisplay(ev.venueName);
-            const artistName = ev.artistName[lang] || ev.artistName.en || 'K-POP';
+            const artistName = ev.artistName[lang] || ev.artistName.en || ev.artistName.ko || 'K-POP';
 
             return (
               <div
@@ -99,10 +100,10 @@ export const WorldTourMap: React.FC<Props> = ({ events, lang, onSelectEvent }) =
                 <h3 style={{ margin: '8px 0 2px 0', fontSize: '1.2rem', color: '#f8fafc' }}>{cityName}</h3>
                 <p style={{ margin: '8px 0 4px 0', color: '#94a3b8', fontSize: '13px' }}>{venueDisplay}</p>
                 <div style={{ fontSize: '11px', color: '#64748b' }}>
-                  📅 {new Date(ev.eventDate).toLocaleDateString()} ({ev.showCount}회)
+                  📅 {new Date(ev.eventDate).toLocaleDateString()}
                 </div>
 
-                {onSelectEvent && (
+                {isAdmin && onSelectEvent && (
                   <button
                     onClick={() => onSelectEvent(ev)}
                     style={{
@@ -118,7 +119,7 @@ export const WorldTourMap: React.FC<Props> = ({ events, lang, onSelectEvent }) =
                       fontWeight: 700
                     }}
                   >
-                    ⚡ 상태 토글
+                    ⚡ [관리자] 상태 토글
                   </button>
                 )}
               </div>
