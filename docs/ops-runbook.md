@@ -71,3 +71,9 @@
 - **방식**: 런타임 실시간 호출이 아닌 **사전 1회 생성(Pre-generation) 방식**으로 Cloud Storage/Public 에셋에 저장.
 - **예상 비용**: 50개 어휘 × 약 10글자 = 500자 (Google Cloud TTS 매월 100만 자 무료 할당량 내 $0.00 유지).
 - **운영 규칙**: 신규 languageContent 어휘 대량 추가 시에만 `node scripts/generateAudio.mjs`를 실행하여 1회 일괄 합성.
+---
+
+## 🚀 정식 런칭 전환 가이드 (Pre-launch -> Production Go-Live)
+정식 런칭 날짜가 확정되고 실제 공식 투어 데이터가 준비되었을 때, 아래 2가지만 수정하여 배포하면 즉시 SEO가 전면 활성화됩니다:
+1. `public/robots.txt`에서 `Disallow: /` ➔ `Allow: /` 및 `Sitemap: https://kpop-map-prod.web.app/sitemap.xml` 등록
+2. `index.html`에서 `<meta name="robots" content="noindex, nofollow" />` ➔ `<meta name="robots" content="index, follow" />`로 변경 후 `npm run build && npx firebase-tools deploy`

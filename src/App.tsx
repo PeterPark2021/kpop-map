@@ -41,8 +41,7 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // 🔒 서명된 수신거부 토큰 검증 핸들러
-  useEffect(() => {
+  // ?뵏 ?쒕챸???섏떊嫄곕? ?좏겙 寃利??몃뱾??  useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const token = params.get('token');
@@ -52,13 +51,13 @@ export default function App() {
         const result = verifyUnsubscribeToken(token);
         if (result.valid && result.uid) {
           userService.unsubscribeByToken(result.uid).then(() => {
-            showToast('✓ [보안 인증 완료] 이메일 알림 수신거부 처리가 안전하게 완료되었습니다.');
+            showToast('??[蹂댁븞 ?몄쬆 ?꾨즺] ?대찓???뚮┝ ?섏떊嫄곕? 泥섎━媛 ?덉쟾?섍쾶 ?꾨즺?섏뿀?듬땲??');
           });
         } else {
-          showToast(`⚠️ [수신거부 실패] 유효하지 않거나 변조된 토큰입니다. (${result.error})`);
+          showToast(`?좑툘 [?섏떊嫄곕? ?ㅽ뙣] ?좏슚?섏? ?딄굅??蹂議곕맂 ?좏겙?낅땲?? (${result.error})`);
         }
       } else if (legacyUid) {
-        showToast('⚠️ 보안 정책 강화로 인해 이전 형식의 수신거부 링크는 만료되었습니다. 마이페이지에서 설정을 변경하세요.');
+        showToast('?좑툘 蹂댁븞 ?뺤콉 媛뺥솕濡??명빐 ?댁쟾 ?뺤떇???섏떊嫄곕? 留곹겕??留뚮즺?섏뿀?듬땲?? 留덉씠?섏씠吏?먯꽌 ?ㅼ젙??蹂寃쏀븯?몄슂.');
       }
     }
   }, []);
@@ -90,7 +89,7 @@ export default function App() {
       return;
     }
     const isNowFav = await userService.toggleFavoriteArtist(artistId);
-    showToast(isNowFav ? '⭐ 관심 아티스트로 등록되었습니다!' : '관심 아티스트 등록이 해제되었습니다.');
+    showToast(isNowFav ? '狩?愿???꾪떚?ㅽ듃濡??깅줉?섏뿀?듬땲??' : '愿???꾪떚?ㅽ듃 ?깅줉???댁젣?섏뿀?듬땲??');
   };
 
   const currentProfile = useMemo(() => {
@@ -114,35 +113,35 @@ export default function App() {
         : 'ticketOpen';
 
     const statusName =
-      nextStatus === 'ticketOpen' ? '티켓 오픈' : nextStatus === 'inProgress' ? '공연 진행중 (LIVE)' : '공연 종료';
+      nextStatus === 'ticketOpen' ? '?곗폆 ?ㅽ뵂' : nextStatus === 'inProgress' ? '怨듭뿰 吏꾪뻾以?(LIVE)' : '怨듭뿰 醫낅즺';
 
     const cityName = selectedEv.city[currentLang] || selectedEv.city.en;
-    showToast(`⚡ [${cityName}] 상태가 '${statusName}'(으)로 실시간 변경되었습니다!`);
+    showToast(`??[${cityName}] ?곹깭媛 '${statusName}'(??濡??ㅼ떆媛?蹂寃쎈릺?덉뒿?덈떎!`);
     await updateStatus(selectedEv.eventId, nextStatus);
   };
 
   const handleApproveNews = async (newsId: string) => {
     await tourService.updateNewsReviewStatus(newsId, 'approved');
     setAllNews(prev => prev.map(n => n.newsId === newsId ? { ...n, reviewStatus: 'approved' } : n));
-    showToast('✓ 해당 뉴스 팩트가 승인되어 공개 피드에 노출됩니다!');
+    showToast('???대떦 ?댁뒪 ?⑺듃媛 ?뱀씤?섏뼱 怨듦컻 ?쇰뱶???몄텧?⑸땲??');
   };
 
   const handleRejectNews = async (newsId: string, reason: string) => {
     await tourService.updateNewsReviewStatus(newsId, 'rejected', reason);
     setAllNews(prev => prev.map(n => n.newsId === newsId ? { ...n, reviewStatus: 'rejected', rejectionReason: reason } : n));
-    showToast('✕ 해당 뉴스 팩트가 반려 처리되었습니다.');
+    showToast('???대떦 ?댁뒪 ?⑺듃媛 諛섎젮 泥섎━?섏뿀?듬땲??');
   };
 
   const handleApproveLang = async (contentId: string) => {
     await tourService.updateLanguageReviewStatus(contentId, 'approved');
     setAllLangContent(prev => prev.map(l => l.contentId === contentId ? { ...l, reviewStatus: 'approved' } : l));
-    showToast('✓ 한국어 학습 표현이 승인되어 피드에 노출됩니다!');
+    showToast('???쒓뎅???숈뒿 ?쒗쁽???뱀씤?섏뼱 ?쇰뱶???몄텧?⑸땲??');
   };
 
   const handleRejectLang = async (contentId: string) => {
     await tourService.updateLanguageReviewStatus(contentId, 'rejected');
     setAllLangContent(prev => prev.map(l => l.contentId === contentId ? { ...l, reviewStatus: 'rejected' } : l));
-    showToast('✕ 해당 한국어 학습 표현이 반려되었습니다.');
+    showToast('???대떦 ?쒓뎅???숈뒿 ?쒗쁽??諛섎젮?섏뿀?듬땲??');
   };
 
   const targetLang = currentLang === 'sea' ? 'en' : currentLang;
@@ -164,7 +163,7 @@ export default function App() {
           top: '20px',
           left: '50%',
           transform: 'translateX(-50%)',
-          background: toastMessage.includes('⚠️') ? '#dc2626' : '#059669',
+          background: toastMessage.includes('?좑툘') ? '#dc2626' : '#059669',
           color: '#fff',
           padding: '12px 24px',
           borderRadius: '30px',
@@ -178,15 +177,15 @@ export default function App() {
         </div>
       )}
 
-      {/* 일반 사용자 로그인/회원가입 모달 (만 14세 게이트 포함) */}
+      {/* ?쇰컲 ?ъ슜??濡쒓렇???뚯썝媛??紐⑤떖 (留?14??寃뚯씠???ы븿) */}
       {isAuthModalOpen && (
         <UserAuthModal
           onClose={() => setIsAuthModalOpen(false)}
-          onSuccess={() => showToast('🎉 환영합니다! 로그인이 완료되었습니다.')}
+          onSuccess={() => showToast('?럦 ?섏쁺?⑸땲?? 濡쒓렇?몄씠 ?꾨즺?섏뿀?듬땲??')}
         />
       )}
 
-      {/* 마이페이지 & 티켓 오픈 알림 설정 모달 */}
+      {/* 留덉씠?섏씠吏 & ?곗폆 ?ㅽ뵂 ?뚮┝ ?ㅼ젙 紐⑤떖 */}
       {isProfileModalOpen && userProfile && (
         <UserProfileModal
           profile={userProfile}
@@ -194,7 +193,7 @@ export default function App() {
         />
       )}
 
-      {/* 관리자 콘솔 */}
+      {/* 愿由ъ옄 肄섏넄 */}
       {isAdminOpen && (
         <AdminDashboard
           newsList={allNews}
@@ -208,18 +207,18 @@ export default function App() {
         />
       )}
 
-      {/* 상단 네비게이션 헤더 */}
+      {/* ?곷떒 ?ㅻ퉬寃뚯씠???ㅻ뜑 */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '1.8rem', color: '#f8fafc', fontWeight: 800 }}>
             K-POP TOUR PULSE
           </h1>
           <span style={{ fontSize: '12px', color: '#22c55e', fontWeight: 600 }}>
-            ● 5대 메가 아티스트 글로벌 월드투어 & 실시간 티켓 알림
+            ??5? 硫붽? ?꾪떚?ㅽ듃 湲濡쒕쾶 ?붾뱶?ъ뼱 & ?ㅼ떆媛??곗폆 ?뚮┝
           </span>
         </div>
 
-        {/* 상단 액션 버튼 그룹 (로그인 / 마이페이지 / 관리자 / 언어) */}
+        {/* ?곷떒 ?≪뀡 踰꾪듉 洹몃９ (濡쒓렇??/ 留덉씠?섏씠吏 / 愿由ъ옄 / ?몄뼱) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {userProfile ? (
             <>
@@ -239,12 +238,12 @@ export default function App() {
                   gap: '6px'
                 }}
               >
-                <span>🔔</span> {userProfile.displayName} (마이페이지)
+                <span>?뵒</span> {userProfile.displayName} (留덉씠?섏씠吏)
               </button>
               <button
                 onClick={() => {
                   userService.logout();
-                  showToast('로그아웃되었습니다.');
+                  showToast('濡쒓렇?꾩썐?섏뿀?듬땲??');
                 }}
                 style={{
                   background: '#121622',
@@ -257,7 +256,7 @@ export default function App() {
                   cursor: 'pointer'
                 }}
               >
-                로그아웃
+                濡쒓렇?꾩썐
               </button>
             </>
           ) : (
@@ -278,7 +277,7 @@ export default function App() {
                 boxShadow: '0 0 12px rgba(255, 215, 0, 0.4)'
               }}
             >
-              <span>🔑</span> 로그인 / 회원가입 (만 14세+)
+              <span>?뵎</span> 濡쒓렇??/ ?뚯썝媛??(留?14??)
             </button>
           )}
 
@@ -295,13 +294,13 @@ export default function App() {
               cursor: 'pointer'
             }}
           >
-            ⚙️ 관리자 ({totalPending})
+            ?숋툘 愿由ъ옄 ({totalPending})
           </button>
           <LanguageSwitcher currentLang={currentLang} onLanguageChange={setCurrentLang} />
         </div>
       </header>
 
-      {/* 메인 화면 중앙: 티켓 알림 배너 */}
+      {/* 硫붿씤 ?붾㈃ 以묒븰: ?곗폆 ?뚮┝ 諛곕꼫 */}
       <div style={{
         background: 'linear-gradient(135deg, #182030 0%, #101520 100%)',
         border: '1px solid #ffd70055',
@@ -310,16 +309,16 @@ export default function App() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div style={{ fontSize: '28px', background: 'rgba(234, 179, 8, 0.2)', width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            🔔
+            ?뵒
           </div>
           <div>
             <strong style={{ color: '#ffd700', fontSize: '15px', display: 'block' }}>
-              관심 아티스트 티켓 오픈 실시간 이메일 알림
+              愿???꾪떚?ㅽ듃 ?곗폆 ?ㅽ뵂 ?ㅼ떆媛??대찓???뚮┝
             </strong>
             <span style={{ color: '#94a3b8', fontSize: '12px' }}>
               {userProfile?.notificationPrefs?.emailEnabled
-                ? '✓ 현재 이메일 알림이 [활성화] 상태입니다. 티켓팅 오픈 즉시 알림이 발송됩니다.'
-                : '티켓팅 시작 1분 전 놓치지 않도록 이메일 알림을 설정하세요! (만 14세 이상 회원 전용)'}
+                ? '???꾩옱 ?대찓???뚮┝??[?쒖꽦?? ?곹깭?낅땲?? ?곗폆???ㅽ뵂 利됱떆 ?뚮┝??諛쒖넚?⑸땲??'
+                : '?곗폆???쒖옉 1遺????볦튂吏 ?딅룄濡??대찓???뚮┝???ㅼ젙?섏꽭?? (留?14???댁긽 ?뚯썝 ?꾩슜)'}
             </span>
           </div>
         </div>
@@ -337,10 +336,10 @@ export default function App() {
             boxShadow: '0 0 16px rgba(255, 215, 0, 0.4)'
           }}
         >
-          {userProfile ? '⚙️ 마이페이지 & 티켓 알림 설정' : '🔑 로그인하고 알림 받기'}
+          {userProfile ? '?숋툘 留덉씠?섏씠吏 & ?곗폆 ?뚮┝ ?ㅼ젙' : '?뵎 濡쒓렇?명븯怨??뚮┝ 諛쏄린'}
         </button>
       </div>
-      {/* 5대 아티스트 셀렉터 & 팔로우 필터 바 */}
+      {/* 5? ?꾪떚?ㅽ듃 ??됲꽣 & ?붾줈???꾪꽣 諛?*/}
       <ArtistSelector
         artists={allArtistsCatalog}
         selectedArtistId={selectedArtistId}
@@ -354,7 +353,7 @@ export default function App() {
         onToggleFavorite={handleToggleFavorite}
         onToggleFilterFavorites={() => setFilterOnlyFavorites(!filterOnlyFavorites)}
       />
-      {/* 콘서트 필수 표현 미니 위젯 */}
+      {/* 肄섏꽌???꾩닔 ?쒗쁽 誘몃땲 ?꾩젽 */}
       <ConcertPhraseWidget items={allLangContent} lang={currentLang} />
       {viewMode === 'anchor' && (
         <GdAnchorHero
@@ -369,7 +368,7 @@ export default function App() {
         onSelectEvent={handleStatusToggle}
       />
       <NewsFactFeed news={approvedNews} />
-      {/* 한국어 학습 피드 */}
+      {/* ?쒓뎅???숈뒿 ?쇰뱶 */}
       <LanguageContentFeed
         items={allLangContent}
         currentLanguage={currentLang}

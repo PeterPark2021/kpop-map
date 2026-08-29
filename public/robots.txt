@@ -1,9 +1,6 @@
+# ==============================================================================
+# K-POP Tour Pulse: Pre-launch Staging Mode (비공개 테스트 모드)
+# 구글 및 외부 검색엔진의 조기 색인을 차단합니다.
+# ==============================================================================
 User-agent: *
-Allow: /
-Allow: /artists/
-Allow: /tours/
-Allow: /cities/
-Disallow: /admin
-Disallow: /api/
-
-Sitemap: https://kpop-map-prod.web.app/sitemap.xml
+Disallow: /
