@@ -59,3 +59,18 @@
   1. **가입 플로우**: 이메일 가입 및 최초 Google 소셜 로그인 시 출생년월 1회 검증 강제. 만 14세 미만은 가입 차단.
   2. **데이터 최소화**: 출생년월은 나이 계산 후 즉시 폐기하며, Firestore에는 `ageVerified: true`와 `ageVerifiedAt` 플래그만 보관 (법적 책임 및 침해 위험 최소화).
   3. **기존 사용자 마이그레이션**: 기존 가입자는 이전 정책 통과자로 간주하여 `ageVerified: true`로 일괄 자동 인정(Grandfathering).
+---
+
+## ADR-008: Firestore 보안 규칙 강화 및 관리자 이메일 백도어 제거
+- **상태**: 승인됨 (Accepted)
+- **일자**: 2026-08-30
+- **문제점**:
+  - `isAdmin()` 함수에 `@galaxycorp.com` 이메일 도메인 매칭이 포함되어 있어, 이메일 소유권 검증 없이 해당 도메인으로 가입한 사용자가 전체 관리자 권한을 획득할 수 있는 치명적 백도어 존재.
+  - `users` 문서의 `ageVerified` 필드가 클라이언트에서 직접 수정될 수 있었음.
+  - 미승인(`pending`) 뉴스가 전체 공개 읽기 가능했음.
+  - `tours`, `venues`, `entities`, `approvedImages` 컬렉션의 보안 규칙 누락.
+- **해결 조치**:
+  1. 이메일 도메인 매칭 조건 전면 삭제 ➔ **`request.auth.token.admin == true` 커스텀 클레임만 유일하게 신뢰**.
+  2. `users` 문서 업데이트 시 `diff().affectedKeys()`로 `ageVerified` 수정 원천 차단.
+  3. `newsFacts`, `languageContent` 읽기를 `reviewStatus == 'approved' || isAdmin()`으로 통제.
+  4. `tours`, `venues`, `entities`, `approvedImages` 등 누락된 모든 컬렉션 규칙을 **공개 읽기/관리자 쓰기**로 완비.

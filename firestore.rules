@@ -1,39 +1,82 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // 1. [보안 강화] 관리자 권한 검증: 오직 커스텀 클레임(admin: true)만 인정 (이메일 도메인 매칭 백도어 영구 제거)
     function isAdmin() {
-      return request.auth != null && (request.auth.token.admin == true || request.auth.token.email.matches('.*@galaxycorp[.]com$'));
+      return request.auth != null && request.auth.token.admin == true;
     }
 
+    // 2. 본인 인증 검증
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // [공개 데이터 컬렉션: 누구나 읽기 가능 / 관리자만 쓰기 가능]
     match /events/{eventId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    match /newsFacts/{newsId} {
+    match /tours/{tourId} {
       allow read: if true;
+      allow write: if isAdmin();
+
+      match /events/{eventId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+    }
+
+    match /entities/{entityId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /venues/{venueId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /approvedImages/{imageId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // [콘텐츠 피드: 승인된(approved) 항목만 공개 읽기 / 관리자는 전체 읽기 및 검수]
+    match /newsFacts/{newsId} {
+      allow read: if resource.data.reviewStatus == 'approved' || isAdmin();
       allow write: if isAdmin();
     }
 
     match /languageContent/{contentId} {
-      allow read: if true;
+      allow read: if resource.data.reviewStatus == 'approved' || isAdmin();
       allow write: if isAdmin();
     }
 
-    // 만 14세 인증(ageVerified == true)이 완료된 소유자만 사용자 문서 읽기/쓰기 가능
+    // [사용자 계정: 필드 레벨 쓰기 제한 및 ageVerified 클라이언트 변조 차단]
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow create, update: if request.auth != null && request.auth.uid == userId
-                            && request.resource.data.ageVerified == true;
-      allow delete: if request.auth != null && request.auth.uid == userId;
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // 사용자 문서 생성 (ageVerified 플래그 포함 허용)
+      allow create: if isOwner(userId);
+
+      // 사용자 문서 업데이트: ageVerified, ageVerifiedAt 수정 원천 차단
+      allow update: if isOwner(userId)
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ageVerified', 'ageVerifiedAt'])
+                    && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['notificationPrefs'])
+                        || (request.resource.data.notificationPrefs.emailEnabled != true || request.resource.data.notificationPrefs.consentGivenAt != null));
+
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
+    // [시스템 설정 및 내부 감사 로그: 외부 접근 차단]
     match /system_config/{configId} {
       allow read, write: if isAdmin();
     }
 
     match /notificationLog/{logId} {
-      allow read, write: if false;
+      allow read, write: if false; // Cloud Functions 내부 전용
     }
 
     match /pipeline_audit_log/{logId} {
