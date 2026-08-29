@@ -26,7 +26,7 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // 일반 사용자 상태 & 모달 제어
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(userService.getCurrentProfile());
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [filterOnlyFavorites, setFilterOnlyFavorites] = useState(false);
@@ -37,19 +37,16 @@ export default function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
 
   useEffect(() => {
-    const unsub = tourService.subscribeToLanguageContent((items) => {
-      if (items && items.length > 0) {
-        setAllLangContent(items);
-      }
+    const unsubLang = tourService.subscribeToLanguageContent((items) => {
+      if (items && items.length > 0) setAllLangContent(items);
     });
-    return () => unsub();
-  }, []);
-
-  useEffect(() => {
-    const unsub = userService.subscribe((profile) => {
+    const unsubUser = userService.subscribe((profile) => {
       setUserProfile(profile);
     });
-    return () => unsub();
+    return () => {
+      unsubLang();
+      unsubUser();
+    };
   }, []);
 
   const showToast = (msg: string) => {
@@ -57,10 +54,16 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  const handleOpenProfileModal = () => {
+    if (!userProfile) {
+      userService.loginDemoUser('K-POP 열정팬');
+    }
+    setIsProfileModalOpen(true);
+  };
+
   const handleToggleFavorite = async (artistId: string) => {
     if (!userProfile) {
-      setIsAuthModalOpen(true);
-      return;
+      userService.loginDemoUser('K-POP 열정팬');
     }
     const isNowFav = await userService.toggleFavoriteArtist(artistId);
     showToast(isNowFav ? '⭐ 관심 아티스트로 등록되었습니다!' : '관심 아티스트 등록이 해제되었습니다.');
@@ -155,14 +158,14 @@ export default function App() {
       {isAuthModalOpen && (
         <UserAuthModal
           onClose={() => setIsAuthModalOpen(false)}
-          onSuccess={() => showToast('�� 로그인되었습니다!')}
+          onSuccess={() => showToast('🎉 로그인되었습니다!')}
         />
       )}
 
-      {/* 일반 사용자 마이페이지 & 알림 설정 모달 */}
-      {isProfileModalOpen && userProfile && (
+      {/* 마이페이지 & 티켓 오픈 알림 설정 모달 */}
+      {isProfileModalOpen && (
         <UserProfileModal
-          profile={userProfile}
+          profile={userProfile || userService.loginDemoUser('K-POP 열정팬')}
           onClose={() => setIsProfileModalOpen(false)}
         />
       )}
@@ -181,54 +184,37 @@ export default function App() {
         />
       )}
 
+      {/* 상단 네비게이션 헤더 */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '1.8rem', color: '#f8fafc', fontWeight: 800 }}>
             K-POP TOUR PULSE
           </h1>
           <span style={{ fontSize: '12px', color: '#22c55e', fontWeight: 600 }}>
-            ● 5대 메가 아티스트 글로벌 월드투어 & 팬 알림 네트워크
+            ● 5대 메가 아티스트 글로벌 월드투어 & 실시간 티켓 알림
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* 일반 회원 로그인 / 프로필 버튼 */}
-          {userProfile ? (
-            <button
-              onClick={() => setIsProfileModalOpen(true)}
-              style={{
-                background: '#1e2433',
-                color: '#ffd700',
-                border: '1px solid #ca8a04',
-                padding: '6px 14px',
-                borderRadius: '20px',
-                fontWeight: 700,
-                fontSize: '13px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              <span>👤</span> {userProfile.displayName}
-            </button>
-          ) : (
-            <button
-              onClick={() => setIsAuthModalOpen(true)}
-              style={{
-                background: '#eab308',
-                color: '#000',
-                border: 'none',
-                padding: '6px 14px',
-                borderRadius: '20px',
-                fontWeight: 800,
-                fontSize: '13px',
-                cursor: 'pointer'
-              }}
-            >
-              로그인 / 회원가입
-            </button>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* 마이페이지 & 알림 설정 버튼 (상시 노출) */}
+          <button
+            onClick={handleOpenProfileModal}
+            style={{
+              background: '#1e2433',
+              color: '#ffd700',
+              border: '1px solid #ca8a04',
+              padding: '6px 14px',
+              borderRadius: '20px',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <span>🔔</span> {userProfile ? `${userProfile.displayName}` : '마이페이지 / 알림 설정'}
+          </button>
 
           <button
             onClick={() => setIsAdminOpen(true)}
@@ -248,6 +234,55 @@ export default function App() {
           <LanguageSwitcher currentLang={currentLang} onLanguageChange={setCurrentLang} />
         </div>
       </header>
+
+      {/* 🌟 메인 화면 중앙: 티켓 오픈 실시간 알림 & 마이페이지 전용 배너 */}
+      <div style={{
+        background: 'linear-gradient(135deg, #182030 0%, #101520 100%)',
+        border: '1px solid #ffd70055',
+        borderRadius: '16px',
+        padding: '16px 20px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '20px',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+        flexWrap: 'wrap',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ fontSize: '28px', background: 'rgba(234, 179, 8, 0.2)', width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            🔔
+          </div>
+          <div>
+            <strong style={{ color: '#ffd700', fontSize: '15px', display: 'block' }}>
+              관심 아티스트 티켓 오픈 실시간 이메일 알림
+            </strong>
+            <span style={{ color: '#94a3b8', fontSize: '12px' }}>
+              {userProfile?.notificationPrefs.emailEnabled
+                ? '✓ 현재 이메일 알림이 [활성화] 상태입니다. 티켓팅 오픈 즉시 알림이 발송됩니다.'
+                : '티켓팅 시작 1분 전 놓치지 않도록 이메일 알림을 설정하세요! (수신 동의 필수)'}
+            </span>
+          </div>
+        </div>
+
+        <button
+          onClick={handleOpenProfileModal}
+          style={{
+            background: 'linear-gradient(135deg, #ffd700, #eab308)',
+            color: '#000',
+            fontWeight: 900,
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '24px',
+            cursor: 'pointer',
+            fontSize: '13px',
+            boxShadow: '0 0 16px rgba(255, 215, 0, 0.4)',
+            transition: 'transform 0.15s ease'
+          }}
+        >
+          ⚙️ 마이페이지 & 티켓 알림 설정 열기
+        </button>
+      </div>
 
       {/* 5대 아티스트 셀렉터 & 팔로우 필터 바 */}
       <ArtistSelector
