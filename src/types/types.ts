@@ -1,87 +1,91 @@
-export type LanguageCode = 'ko' | 'en' | 'ja' | 'zh' | 'sea';
+export type LanguageCode = 'ko' | 'en' | 'ja' | 'sea';
 
 export interface LocalizedString {
   ko: string;
   en: string;
-  ja: string;
-  zh: string;
-  sea: string;
+  ja?: string;
+  sea?: string;
 }
 
 export type ReviewStatus = 'pending' | 'approved' | 'rejected';
 
 export interface TourEvent {
   eventId: string;
-  tourId: string;
   artistId: string;
-  artistName: Record<string, string>;
+  artistName: LocalizedString;
   city: LocalizedString;
   country: string;
-  venueName: LocalizedString | string;
+  venueName: string | LocalizedString;
+  eventDate: string;
+  status: 'ticketOpen' | 'inProgress' | 'completed' | 'scheduled';
+  showCount: number;
   coordinates: {
     lat: number;
     lng: number;
   };
-  eventDate: string;
-  showCount: number;
-  status: 'scheduled' | 'ticketOpen' | 'inProgress' | 'completed';
-  isHighlight?: boolean;
   ticketUrl?: string;
-}
-
-export interface TourNewsFact {
-  newsId: string;
-  artistId: string;
-  tourId: string;
-  language: string;
-  title: string;
-  factSummary: string[];
-  sourceName: string;
-  sourceUrl: string;
-  isOfficial: boolean;
-  publishedAt: string;
-  reviewStatus: ReviewStatus;
-  rejectionReason?: string;
-}
-
-export interface PipelineAuditLog {
-  logId: string;
-  timestamp: string;
-  articleTitle: string;
-  sourceUrl: string;
-  status: 'SUCCESS' | 'BLOCKED_NGRAM' | 'RETRY_TRIGGERED' | 'FAILED_PARSING';
-  ngramMatchCount?: number;
-  detectedOverlapSnippet?: string;
-  detail: string;
+  notifiedStatuses?: string[];
+  lastNotifiedAt?: string;
 }
 
 export interface ArtistProfile {
   artistId: string;
   name: LocalizedString;
   description: LocalizedString;
-  isAnchor?: boolean;
+  anchorCity: LocalizedString;
+  totalShows: number;
+  statusText: LocalizedString;
+  imageUrl: string;
+  accentColor: string;
 }
 
-export interface LanguageContentTranslation {
-  term: string;
-  meaning: string;
+export interface TourNewsFact {
+  newsId: string;
+  artistId: string;
+  headline: string;
+  summary: string;
+  source: string;
+  sourceUrl: string;
+  publishedAt: string;
+  language: string;
+  reviewStatus: ReviewStatus;
+  rejectionReason?: string;
+  verificationConfidence?: number;
 }
 
 export interface LanguageContentItem {
   contentId: string;
-  category: 'fandomTerms' | 'onomatopoeia';
-  level: 'beginner' | 'intermediate' | 'advanced';
-  koreanText: string;
-  romanization: string;
-  audioScript: string;
-  audioUrl?: string; // 정식 Cloud TTS 사전 생성 오디오 URL
-  translations: {
-    en: LanguageContentTranslation;
-    ja: LanguageContentTranslation;
-    'zh-TW': LanguageContentTranslation;
-    th: LanguageContentTranslation;
-  };
-  culturalNote?: string;
+  koreanPhrase: string;
+  pronunciation: string;
+  englishMeaning: string;
+  japaneseMeaning?: string;
+  contextUsage: string;
   reviewStatus: ReviewStatus;
-  createdAt: string;
+  audioUrl?: string;
+}
+
+export interface PipelineAuditLog {
+  logId: string;
+  timestamp: string;
+  articleTitle: string;
+  status: 'SUCCESS' | 'BLOCKED' | 'FLAGGED';
+  detail: string;
+}
+
+export interface UserNotificationPrefs {
+  emailEnabled: boolean;
+  ticketOpen: boolean;
+  statusChange: boolean;
+  language: LanguageCode;
+  consentGivenAt?: string;
+}
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  favoriteArtistIds: string[];
+  ageVerified: boolean;
+  ageVerifiedAt?: string;
+  notificationPrefs: UserNotificationPrefs;
 }
