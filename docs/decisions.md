@@ -39,3 +39,8 @@
   1. **브루트포스 공격 차단**: 4자리 PIN의 사전 공격/무차별 대입 공격 취약성을 원천 제거.
   2. **클라이언트 조작 불가**: `request.auth.token.admin == true`를 Firestore Security Rules 레벨에서 강제하여 클라이언트 변조를 방지.
   3. **감사 추적성(Audit Trail)**: 어떤 관리자 계정이 뉴스나 언어 콘텐츠를 승인/반려했는지 계정별 추적 가능.
+### 원자적 중복 발송 방지 아키텍처 (Atomic Check-and-Claim)
+- **문제점**: Cloud Functions의 At-least-once 재시도 및 동시 트리거 시 TOCTOU(Time-of-check to time-of-use) 레이스 컨디션으로 인한 중복 메일 발송 위험 존재.
+- **해결책**:
+  1. `db.runTransaction` 내에서 `notifiedStatuses`를 **메일 발송 전에 먼저 원자적으로 검사 및 기록(Claim)**.
+  2. 선점에 성공한 **단 하나의 인스턴스만** 사용자 이메일 쿼리 및 발송을 수행하고, 나머지 동시 인스턴스는 즉시 탈출(Abort).
