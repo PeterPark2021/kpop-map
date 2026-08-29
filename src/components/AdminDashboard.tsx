@@ -1,22 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import {
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signOut,
-  onAuthStateChanged,
-  User
-} from 'firebase/auth';
-import { auth, googleProvider } from '../lib/firebase';
+import React, { useState } from 'react';
 import { TourNewsFact, PipelineAuditLog, LanguageContentItem } from '../types/types';
+import { officialRssSources } from '../data/rssSourcesCatalog';
+import { rssCollectorService } from '../services/rssCollectorService';
 
 interface Props {
   newsList: TourNewsFact[];
   auditLogs: PipelineAuditLog[];
   languageItems: LanguageContentItem[];
-  onApproveNews: (newsId: string) => void;
-  onRejectNews: (newsId: string, reason: string) => void;
-  onApproveLang: (contentId: string) => void;
-  onRejectLang: (contentId: string) => void;
+  onApproveNews: (newsId: string) => Promise<void>;
+  onRejectNews: (newsId: string, reason: string) => Promise<void>;
+  onApproveLang: (contentId: string) => Promise<void>;
+  onRejectLang: (contentId: string) => Promise<void>;
   onClose: () => void;
 }
 
@@ -30,380 +24,264 @@ export const AdminDashboard: React.FC<Props> = ({
   onRejectLang,
   onClose
 }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<'news' | 'lang' | 'rss' | 'audit'>('news');
+  const [rejectReason, setRejectReason] = useState<string>('');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStats, setSyncStats] = useState<string | null>(null);
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loginError, setLoginError] = useState<string | null>(null);
+  const pendingNews = newsList.filter(n => n.reviewStatus === 'pending');
+  const pendingLang = languageItems.filter(l => l.reviewStatus === 'pending');
 
-  const [activeTab, setActiveTab] = useState<'news' | 'language' | 'audit'>('news');
-  const [localNews, setLocalNews] = useState<TourNewsFact[]>(newsList);
-  const [localLang, setLocalLang] = useState<LanguageContentItem[]>(languageItems);
-
-  useEffect(() => {
-    setLocalNews(newsList);
-  }, [newsList]);
-
-  useEffect(() => {
-    setLocalLang(languageItems);
-  }, [languageItems]);
-
-  useEffect(() => {
-    if (!auth) {
-      setAuthLoading(false);
-      return;
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      if (user) {
-        try {
-          const idTokenResult = await user.getIdTokenResult(true);
-          const hasAdminClaim = Boolean(idTokenResult.claims.admin);
-          setIsAdmin(hasAdminClaim || Boolean(user.email));
-        } catch {
-          setIsAdmin(true);
-        }
-      } else {
-        setIsAdmin(false);
-      }
-      setAuthLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!auth) return;
-    setLoginError(null);
-
+  const handleRunRssSync = async () => {
+    setIsSyncing(true);
+    setSyncStats(null);
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-    } catch (err: any) {
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        setLoginError('등록되지 않은 관리자 이메일이거나 비밀번호가 올바르지 않습니다.');
-      } else {
-        setLoginError(`로그인 실패: ${err.message}`);
-      }
+      const res = await rssCollectorService.executeRssSync();
+      setSyncStats(`✓ ${res.totalFeedsChecked}개 피드 점검 완료: 팩트 ${res.newFactsExtracted}건 추출 (자동승인: ${res.autoApprovedCount}, 검수대기: ${res.pendingReviewCount})`);
+    } catch (err) {
+      setSyncStats('⚠️ RSS 수집 중 일시적 네트워크 오류가 발생했습니다.');
+    } finally {
+      setIsSyncing(false);
     }
   };
-
-  const handleGoogleLogin = async () => {
-    if (!auth || !googleProvider) {
-      setLoginError('Firebase Auth 모듈이 초기화되지 않았습니다.');
-      return;
-    }
-    setLoginError(null);
-
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (err: any) {
-      if (err.code === 'auth/configuration-not-found' || err.code === 'auth/operation-not-allowed') {
-        setLoginError('⚠️ Google 로그인이 활성화되지 않았습니다. Firebase 콘솔 [Authentication ➔ Sign-in method ➔ Google]에서 [사용 설정] 스위치를 켜고 저장하세요.');
-      } else if (err.code !== 'auth/popup-closed-by-user') {
-        setLoginError(`구글 로그인 실패: ${err.message}`);
-      }
-    }
-  };
-
-  const handleLogout = async () => {
-    if (auth) {
-      await signOut(auth);
-    }
-    setCurrentUser(null);
-    setIsAdmin(false);
-  };
-
-  const handleLocalApproveNews = (newsId: string) => {
-    setLocalNews(prev => prev.map(n => n.newsId === newsId ? { ...n, reviewStatus: 'approved' } : n));
-    onApproveNews(newsId);
-  };
-
-  const handleLocalRejectNews = (newsId: string, reason: string) => {
-    setLocalNews(prev => prev.map(n => n.newsId === newsId ? { ...n, reviewStatus: 'rejected', rejectionReason: reason } : n));
-    onRejectNews(newsId, reason);
-  };
-
-  const handleLocalApproveLang = (contentId: string) => {
-    setLocalLang(prev => prev.map(l => l.contentId === contentId ? { ...l, reviewStatus: 'approved' } : l));
-    onApproveLang(contentId);
-  };
-
-  const handleLocalRejectLang = (contentId: string) => {
-    setLocalLang(prev => prev.map(l => l.contentId === contentId ? { ...l, reviewStatus: 'rejected' } : l));
-    onRejectLang(contentId);
-  };
-
-  const pendingNewsCount = localNews.filter(n => n.reviewStatus === 'pending').length;
-  const pendingLangCount = localLang.filter(l => l.reviewStatus === 'pending').length;
 
   return (
     <div style={{
       position: 'fixed',
-      inset: 0,
-      background: 'rgba(5, 7, 12, 0.90)',
-      backdropFilter: 'blur(12px)',
-      zIndex: 10000,
+      top: 0, left: 0, right: 0, bottom: 0,
+      background: 'rgba(0, 0, 0, 0.85)',
+      backdropFilter: 'blur(10px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      zIndex: 999999,
       padding: '20px'
     }}>
       <div style={{
-        background: '#11151f',
-        width: '100%',
-        maxWidth: (currentUser && isAdmin) ? '1080px' : '440px',
-        maxHeight: '90vh',
-        borderRadius: '16px',
+        background: '#121622',
         border: '1px solid #283042',
-        boxShadow: '0 25px 60px rgba(0,0,0,0.85)',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden'
+        borderRadius: '20px',
+        width: '100%',
+        maxWidth: '900px',
+        maxHeight: '90vh',
+        overflowY: 'auto',
+        padding: '28px',
+        boxShadow: '0 25px 50px rgba(0,0,0,0.7)',
+        color: '#f8fafc',
+        position: 'relative'
       }}>
-        {/* 헤더 */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '18px 24px',
-          borderBottom: '1px solid #1e2433',
-          background: '#161b26'
-        }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '1.2rem', color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>🔐</span> K-POP 관리자 인증 콘솔
-              <span style={{ fontSize: '10px', background: '#3b82f6', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
-                Firebase Auth 2.0
-              </span>
-            </h2>
-            <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-              보안 인증 게이트웨이 (Google SSO / Email)
-            </span>
-          </div>
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: '20px',
+            right: '20px',
+            background: 'none',
+            border: 'none',
+            color: '#94a3b8',
+            fontSize: '24px',
+            cursor: 'pointer'
+          }}
+        >
+          ✕
+        </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {currentUser && (
-              <button
-                onClick={handleLogout}
-                style={{ background: '#334155', color: '#f1f5f9', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
-              >
-                로그아웃
-              </button>
-            )}
-            <button
-              onClick={onClose}
-              style={{ background: '#232a3d', color: '#94a3b8', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 700 }}
-            >
-              ✕ 닫기
-            </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0, color: '#f8fafc' }}>
+              ⚙️ K-POP Tour Pulse 통합 관리자 콘솔
+            </h2>
+            <span style={{ fontSize: '12px', color: '#94a3b8' }}>
+              투어 뉴스 교차 검증, 한국어 표현 검수 및 RSS 피드 수집 파이프라인
+            </span>
           </div>
         </div>
 
-        {/* 1단계: Firebase Auth 로그인 화면 */}
-        {authLoading ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-            인증 상태 확인 중...
-          </div>
-        ) : (!currentUser || !isAdmin) ? (
-          <div style={{ padding: '32px 28px' }}>
-            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>🛡️</div>
-              <h3 style={{ color: '#f8fafc', margin: '0 0 6px 0', fontSize: '1.15rem' }}>
-                운영자 계정으로 로그인하세요
-              </h3>
-              <p style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>
-                인가된 관리자 계정만 접근할 수 있습니다.
-              </p>
+        {/* 탭 네비게이션 */}
+        <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #1e2433', paddingBottom: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setActiveTab('news')}
+            style={{
+              background: activeTab === 'news' ? '#eab308' : '#1e2433',
+              color: activeTab === 'news' ? '#000' : '#94a3b8',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            📰 뉴스 검수 ({pendingNews.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('lang')}
+            style={{
+              background: activeTab === 'lang' ? '#eab308' : '#1e2433',
+              color: activeTab === 'lang' ? '#000' : '#94a3b8',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            🇰🇷 한국어 학습 ({pendingLang.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('rss')}
+            style={{
+              background: activeTab === 'rss' ? '#eab308' : '#1e2433',
+              color: activeTab === 'rss' ? '#000' : '#94a3b8',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            📡 RSS 수집원 ({officialRssSources.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('audit')}
+            style={{
+              background: activeTab === 'audit' ? '#eab308' : '#1e2433',
+              color: activeTab === 'audit' ? '#000' : '#94a3b8',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            🛡️ 감사 로그 ({auditLogs.length})
+          </button>
+        </div>
+
+        {/* 탭 1: RSS 수집원 관리 */}
+        {activeTab === 'rss' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <strong style={{ fontSize: '14px', color: '#ffd700' }}>
+                  5대 기획사 & 글로벌 미디어 공식 RSS 피드 ({officialRssSources.length}개)
+                </strong>
+                <span style={{ fontSize: '12px', color: '#64748b', display: 'block' }}>
+                  6시간마다 자동 수집되며, 수동 즉시 수집도 지원합니다.
+                </span>
+              </div>
+              <button
+                onClick={handleRunRssSync}
+                disabled={isSyncing}
+                style={{
+                  background: 'linear-gradient(135deg, #ffd700, #eab308)',
+                  color: '#000',
+                  border: 'none',
+                  padding: '9px 18px',
+                  borderRadius: '10px',
+                  fontWeight: 800,
+                  fontSize: '13px',
+                  cursor: 'pointer'
+                }}
+              >
+                {isSyncing ? '📡 수집 및 검증 중...' : '🚀 즉시 RSS 수집 실행'}
+              </button>
             </div>
 
-            {loginError && (
-              <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', color: '#fca5a5', padding: '10px 14px', borderRadius: '8px', fontSize: '12px', marginBottom: '16px', lineHeight: '1.5' }}>
-                {loginError}
+            {syncStats && (
+              <div style={{ background: '#0f291e', border: '1px solid #22c55e', color: '#4ade80', padding: '12px', borderRadius: '10px', fontSize: '13px', marginBottom: '16px', fontWeight: 600 }}>
+                {syncStats}
               </div>
             )}
 
-            {/* Google SSO 원클릭 로그인 */}
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              style={{ width: '100%', background: '#ffffff', color: '#0f172a', fontWeight: 700, border: 'none', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.3)', marginBottom: '16px' }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
-              Google 계정으로 원클릭 로그인
-            </button>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '16px 0', color: '#475569', fontSize: '12px' }}>
-              <div style={{ flex: 1, height: '1px', background: '#1e2433' }} />
-              <span>또는 관리자 이메일 직접 입력</span>
-              <div style={{ flex: 1, height: '1px', background: '#1e2433' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>
+              {officialRssSources.map(s => (
+                <div key={s.sourceId} style={{ background: '#161b26', padding: '14px', borderRadius: '10px', border: '1px solid #283042' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '11px', background: s.isOfficial ? '#16a34a' : '#475569', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                      {s.isOfficial ? '✓ 공식 기획사' : '글로벌 미디어'}
+                    </span>
+                    <span style={{ fontSize: '11px', color: '#ffd700', fontWeight: 700 }}>
+                      가중치 {s.reliabilityWeight}
+                    </span>
+                  </div>
+                  <strong style={{ fontSize: '13px', color: '#f8fafc', display: 'block' }}>{s.name}</strong>
+                  <span style={{ fontSize: '11px', color: '#94a3b8' }}>{s.agencyName}</span>
+                  <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px', wordBreak: 'break-all' }}>
+                    🔗 {s.siteUrl}
+                  </div>
+                </div>
+              ))}
             </div>
-
-            {/* 이메일 직접 입력 폼 */}
-            <form onSubmit={handleEmailLogin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div>
-                <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>관리자 이메일</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="admin@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', background: '#0d0e12', border: '1px solid #283042', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '12px', color: '#94a3b8', display: 'block', marginBottom: '4px' }}>비밀번호</label>
-                <input
-                  type="password"
-                  required
-                  placeholder="비밀번호 입력"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', background: '#0d0e12', border: '1px solid #283042', borderRadius: '8px', color: '#fff', fontSize: '13px' }}
-                />
-              </div>
-
-              <button
-                type="submit"
-                style={{ width: '100%', background: '#eab308', color: '#000', fontWeight: 800, border: 'none', padding: '11px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', marginTop: '6px' }}
-              >
-                이메일로 관리자 로그인
-              </button>
-            </form>
           </div>
-        ) : (
-          /* 2단계: 인증 완료 대시보드 */
-          <>
-            <div style={{ display: 'flex', borderBottom: '1px solid #1e2433', background: '#0e121a', padding: '0 24px' }}>
-              <button
-                onClick={() => setActiveTab('news')}
-                style={{
-                  padding: '14px 18px',
-                  background: 'transparent',
-                  border: 'none',
-                  borderBottom: activeTab === 'news' ? '2px solid #eab308' : '2px solid transparent',
-                  color: activeTab === 'news' ? '#fef08a' : '#94a3b8',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                📋 뉴스 팩트 검수 ({pendingNewsCount})
-              </button>
-              <button
-                onClick={() => setActiveTab('language')}
-                style={{
-                  padding: '14px 18px',
-                  background: 'transparent',
-                  border: 'none',
-                  borderBottom: activeTab === 'language' ? '2px solid #eab308' : '2px solid transparent',
-                  color: activeTab === 'language' ? '#fef08a' : '#94a3b8',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                🗣️ 한국어 학습 콘텐츠 ({pendingLangCount})
-              </button>
-              <button
-                onClick={() => setActiveTab('audit')}
-                style={{
-                  padding: '14px 18px',
-                  background: 'transparent',
-                  border: 'none',
-                  borderBottom: activeTab === 'audit' ? '2px solid #eab308' : '2px solid transparent',
-                  color: activeTab === 'audit' ? '#fef08a' : '#94a3b8',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                🛡️ 표절 감사 로그 ({auditLogs.length})
-              </button>
-            </div>
+        )}
 
-            <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
-              {activeTab === 'news' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {localNews.map((item) => (
-                    <div key={item.newsId} style={{ background: '#161b26', padding: '16px', borderRadius: '10px', border: item.reviewStatus === 'pending' ? '1px solid #eab308' : '1px solid #232a3d' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <strong style={{ color: '#f8fafc' }}>{item.title}</strong>
-                        <span style={{ fontSize: '11px', background: item.reviewStatus === 'approved' ? '#16a34a' : '#ca8a04', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
-                          {item.reviewStatus.toUpperCase()}
-                        </span>
-                      </div>
-                      {item.reviewStatus === 'pending' && (
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-                          <button onClick={() => handleLocalApproveNews(item.newsId)} style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 700 }}>✓ 승인</button>
-                          <button onClick={() => handleLocalRejectNews(item.newsId, '반려')} style={{ background: '#e11d48', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontWeight: 700 }}>✕ 반려</button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+        {/* 탭 2: 뉴스 검수 */}
+        {activeTab === 'news' && (
+          <div>
+            {pendingNews.length === 0 ? (
+              <p style={{ color: '#64748b', textAlign: 'center', padding: '30px 0' }}>검수 대기 중인 뉴스가 없습니다. (모두 승인 완료)</p>
+            ) : (
+              pendingNews.map(item => (
+                <div key={item.newsId} style={{ background: '#161b26', padding: '16px', borderRadius: '12px', marginBottom: '12px', border: '1px solid #283042' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '11px', color: '#ffd700', fontWeight: 700 }}>출처: {item.sourceName || item.source}</span>
+                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>신뢰도 점수: {(item.verificationConfidence || 0.8) * 100}%</span>
+                  </div>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', color: '#f8fafc' }}>{item.title || item.headline}</h4>
+                  <p style={{ fontSize: '13px', color: '#cbd5e1', margin: '0 0 12px 0' }}>{item.summary}</p>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => onApproveNews(item.newsId)}
+                      style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      ✓ 승인 및 공개 피드 반영
+                    </button>
+                    <button
+                      onClick={() => onRejectNews(item.newsId, rejectReason || '내용 불일치')}
+                      style={{ background: '#dc2626', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      ✕ 반려
+                    </button>
+                  </div>
                 </div>
-              )}
+              ))
+            )}
+          </div>
+        )}
 
-              {activeTab === 'language' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {localLang.map((item) => (
-                    <div key={item.contentId} style={{ background: '#161b26', padding: '18px', borderRadius: '12px', border: item.reviewStatus === 'pending' ? '1px solid #38bdf8' : '1px solid #232a3d' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ background: item.reviewStatus === 'approved' ? '#16a34a' : item.reviewStatus === 'rejected' ? '#e11d48' : '#0284c7', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 700 }}>
-                              {item.reviewStatus.toUpperCase()}
-                            </span>
-                            <strong style={{ color: '#f8fafc', fontSize: '1.2rem' }}>{item.koreanText}</strong>
-                            <span style={{ color: '#94a3b8', fontSize: '13px' }}>[{item.romanization}]</span>
-                          </div>
-                          <div style={{ color: '#cbd5e1', fontSize: '13px', marginTop: '6px' }}>
-                            🇺🇸 {item.translations.en.term}: {item.translations.en.meaning}
-                          </div>
-                        </div>
-                      </div>
-
-                      {item.culturalNote && (
-                        <div style={{ fontSize: '12px', color: '#94a3b8', background: '#0d1017', padding: '8px 12px', borderRadius: '6px', marginTop: '8px' }}>
-                          💡 <strong>문화 노트:</strong> {item.culturalNote}
-                        </div>
-                      )}
-
-                      {item.reviewStatus === 'pending' && (
-                        <div style={{ display: 'flex', gap: '10px', marginTop: '14px', borderTop: '1px solid #232a3d', paddingTop: '10px' }}>
-                          <button
-                            onClick={() => handleLocalApproveLang(item.contentId)}
-                            style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: '6px', cursor: 'pointer', fontWeight: 700, fontSize: '13px' }}
-                          >
-                            ✓ 승인 (공개 학습 피드 노출)
-                          </button>
-                          <button
-                            onClick={() => handleLocalRejectLang(item.contentId)}
-                            style={{ background: '#e11d48', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: '6px', cursor: 'pointer', fontWeight: 700, fontSize: '13px' }}
-                          >
-                            ✕ 반려 (비공개 처리)
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+        {/* 탭 3: 한국어 학습 검수 */}
+        {activeTab === 'lang' && (
+          <div>
+            {pendingLang.length === 0 ? (
+              <p style={{ color: '#64748b', textAlign: 'center', padding: '30px 0' }}>검수 대기 중인 한국어 학습 표현이 없습니다.</p>
+            ) : (
+              pendingLang.map(l => (
+                <div key={l.contentId} style={{ background: '#161b26', padding: '16px', borderRadius: '12px', marginBottom: '12px', border: '1px solid #283042' }}>
+                  <h4 style={{ margin: '0 0 4px 0', color: '#ffd700', fontSize: '1.2rem' }}>{l.koreanText || l.koreanPhrase}</h4>
+                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 8px 0' }}>[{l.romanization || l.pronunciation}] 👉 {l.englishMeaning}</p>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={() => onApproveLang(l.contentId)} style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}>✓ 승인</button>
+                    <button onClick={() => onRejectLang(l.contentId)} style={{ background: '#dc2626', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', fontWeight: 700, cursor: 'pointer' }}>✕ 반려</button>
+                  </div>
                 </div>
-              )}
+              ))
+            )}
+          </div>
+        )}
 
-              {activeTab === 'audit' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {auditLogs.map(log => (
-                    <div key={log.logId} style={{ background: '#161b26', padding: '14px', borderRadius: '8px' }}>
-                      <strong style={{ color: '#f8fafc', fontSize: '13px' }}>{log.articleTitle}</strong>
-                      <p style={{ margin: '4px 0 0 0', color: '#94a3b8', fontSize: '12px' }}>{log.detail}</p>
-                    </div>
-                  ))}
+        {/* 탭 4: 감사 로그 */}
+        {activeTab === 'audit' && (
+          <div>
+            {auditLogs.length === 0 ? (
+              <p style={{ color: '#64748b', textAlign: 'center', padding: '30px 0' }}>감사 로그가 비어있습니다.</p>
+            ) : (
+              auditLogs.map(log => (
+                <div key={log.logId} style={{ background: '#0b0e14', padding: '12px', borderRadius: '8px', marginBottom: '8px', fontSize: '12px' }}>
+                  <span style={{ color: '#ffd700' }}>[{log.timestamp}]</span> <strong>{log.articleTitle}</strong> — {log.detail}
                 </div>
-              )}
-            </div>
-          </>
+              ))
+            )}
+          </div>
         )}
       </div>
     </div>

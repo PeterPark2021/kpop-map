@@ -70,3 +70,13 @@
   1. `InteractiveMap.tsx`의 타일 레이어를 완전 무료/무제한 다크 캔버스인 **ESRI World Dark Gray MapServer**로 전면 교체하여 워터마크 영구 제거.
   2. `App.tsx`의 `handleStatusToggle` 및 모든 검수 액션을 `try { await write(); showToast('성공') } catch { showToast('실패') }` 패턴으로 전면 재설계하여 거짓 성공 토스트 제거.
   3. 공개 지도의 핀 팝업에서 **관리자 클레임(`isAdmin: true`)이 없는 비로그인/일반 방문자에게는 [상태 토글] 버튼을 숨겨 읽기 전용으로 제한**.
+---
+
+## ADR-011: 5대 기획사 및 글로벌 미디어 RSS 수집 파이프라인 확장 (v2.0)
+- **상태**: 승인됨 (Accepted)
+- **일자**: 2026-08-30
+- **내용**:
+  1. 5대 기획사(갤럭시코퍼레이션, 하이브/빅히트, YG, 플레디스, JYP) 및 글로벌 미디어(Soompi, Allkpop, Billboard, Live Nation) RSS 수집원 9종 카탈로그 구축.
+  2. N-gram 및 정규식 기반 지능형 투어 팩트(도시, 공연장, 티켓일정) 추출 엔진 개발.
+  3. 신뢰도 가중치 기반 자동 승인(`verificationConfidence >= 0.85`) 및 불확실 기사 검수 큐 격리 체계 구축.
+  4. 관리자 대시보드 내 실시간 RSS 수집 모니터링 및 즉시 실행 트리거 연동 완료.
