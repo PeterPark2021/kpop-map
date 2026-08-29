@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { allArtistsCatalog, btsTourEvents, blackpinkTourEvents, seventeenTourEvents, strayKidsTourEvents } from './data/artistsCatalog';
 import { initialBigBangTourEvents, sampleNewsFacts, sampleAuditLogs } from './data/initialData';
 import { sampleLanguageContents } from './data/sampleLanguageContent';
+import { tourService } from './services/tourService';
 import { useTourEvents } from './hooks/useTourEvents';
 import { useLanguage } from './hooks/useLanguage';
 import { GdAnchorHero } from './components/GdAnchorHero';
@@ -25,6 +26,16 @@ export default function App() {
   const [allLangContent, setAllLangContent] = useState<LanguageContentItem[]>(sampleLanguageContents);
   const [auditLogs] = useState<PipelineAuditLog[]>(sampleAuditLogs);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+
+  // Firestore languageContent 실시간 구독
+  useEffect(() => {
+    const unsub = tourService.subscribeToLanguageContent((items) => {
+      if (items && items.length > 0) {
+        setAllLangContent(items);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -59,24 +70,26 @@ export default function App() {
     await updateStatus(selectedEv.eventId, nextStatus);
   };
 
-  // 뉴스 승인/반려
-  const handleApproveNews = (newsId: string) => {
+  const handleApproveNews = async (newsId: string) => {
+    await tourService.updateNewsReviewStatus(newsId, 'approved');
     setAllNews(prev => prev.map(n => n.newsId === newsId ? { ...n, reviewStatus: 'approved' } : n));
     showToast('✓ 해당 뉴스 팩트가 승인되어 공개 피드에 노출됩니다!');
   };
 
-  const handleRejectNews = (newsId: string, reason: string) => {
+  const handleRejectNews = async (newsId: string, reason: string) => {
+    await tourService.updateNewsReviewStatus(newsId, 'rejected', reason);
     setAllNews(prev => prev.map(n => n.newsId === newsId ? { ...n, reviewStatus: 'rejected', rejectionReason: reason } : n));
     showToast('✕ 해당 뉴스 팩트가 반려 처리되었습니다.');
   };
 
-  // 한국어 학습 콘텐츠 승인/반려
-  const handleApproveLang = (contentId: string) => {
+  const handleApproveLang = async (contentId: string) => {
+    await tourService.updateLanguageReviewStatus(contentId, 'approved');
     setAllLangContent(prev => prev.map(l => l.contentId === contentId ? { ...l, reviewStatus: 'approved' } : l));
     showToast('✓ 한국어 학습 표현이 승인되어 피드에 노출됩니다!');
   };
 
-  const handleRejectLang = (contentId: string) => {
+  const handleRejectLang = async (contentId: string) => {
+    await tourService.updateLanguageReviewStatus(contentId, 'rejected');
     setAllLangContent(prev => prev.map(l => l.contentId === contentId ? { ...l, reviewStatus: 'rejected' } : l));
     showToast('✕ 해당 한국어 학습 표현이 반려되었습니다.');
   };
@@ -157,7 +170,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* 아티스트 셀렉터 바 */}
+      {/* 5대 아티스트 셀렉터 바 */}
       <ArtistSelector
         artists={allArtistsCatalog}
         selectedArtistId={selectedArtistId}

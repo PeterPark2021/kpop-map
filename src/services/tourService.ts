@@ -1,32 +1,32 @@
 import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '../lib/firebase';
-import { TourEvent, TourNewsFact } from '../types/types';
+import { TourEvent, TourNewsFact, LanguageContentItem } from '../types/types';
 import { initialBigBangTourEvents, sampleNewsFacts } from '../data/initialData';
+import { sampleLanguageContents } from '../data/sampleLanguageContent';
 
 export type EventUpdateCallback = (events: TourEvent[]) => void;
 export type NewsUpdateCallback = (news: TourNewsFact[]) => void;
+export type LanguageUpdateCallback = (items: LanguageContentItem[]) => void;
 
 class TourService {
   private mockEvents: TourEvent[] = [...initialBigBangTourEvents];
   private mockNews: TourNewsFact[] = [...sampleNewsFacts];
+  private mockLang: LanguageContentItem[] = [...sampleLanguageContents];
   private eventListeners: EventUpdateCallback[] = [];
   private newsListeners: { lang: string; cb: NewsUpdateCallback }[] = [];
+  private langListeners: LanguageUpdateCallback[] = [];
 
   public subscribeToTourEvents(callback: EventUpdateCallback): () => void {
     if (isFirebaseConfigured && db) {
       const q = query(collection(db, 'events'));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
+      return onSnapshot(q, (snapshot) => {
         if (!snapshot.empty) {
           const events = snapshot.docs.map((d) => d.data() as TourEvent);
           callback(events);
         } else {
           callback(this.mockEvents);
         }
-      }, (error) => {
-        console.error('[Firestore] Events error, falling back:', error);
-        callback(this.mockEvents);
-      });
-      return unsubscribe;
+      }, () => callback(this.mockEvents));
     }
 
     this.eventListeners.push(callback);
@@ -43,7 +43,7 @@ class TourService {
         await updateDoc(docRef, { status });
         return;
       } catch (err) {
-        console.warn('Firestore update failed, updating local state:', err);
+        console.warn('Firestore update failed:', err);
       }
     }
 
@@ -62,11 +62,7 @@ class TourService {
     };
 
     if (isFirebaseConfigured && db) {
-      const q = query(
-        collection(db, 'newsFacts'),
-        where('artistId', '==', artistId)
-      );
-
+      const q = query(collection(db, 'newsFacts'), where('artistId', '==', artistId));
       return onSnapshot(q, (snapshot) => {
         if (!snapshot.empty) {
           const facts = snapshot.docs.map(d => d.data() as TourNewsFact);
@@ -74,9 +70,7 @@ class TourService {
         } else {
           emitCurrent();
         }
-      }, () => {
-        emitCurrent();
-      });
+      }, () => emitCurrent());
     }
 
     this.newsListeners.push({ lang: targetLang, cb: callback });
@@ -86,7 +80,6 @@ class TourService {
     };
   }
 
-  // 검수 상태 영구 업데이트 (승인/반려)
   public async updateNewsReviewStatus(newsId: string, reviewStatus: TourNewsFact['reviewStatus'], reason?: string) {
     this.mockNews = this.mockNews.map(n =>
       n.newsId === newsId ? { ...n, reviewStatus, rejectionReason: reason } : n
@@ -101,15 +94,53 @@ class TourService {
       }
     }
 
-    // 모든 뉴스 구독자에게 즉시 새 상태 전파
     this.newsListeners.forEach(({ lang, cb }) => {
       const filtered = this.mockNews.filter(f => f.language === lang || f.language === 'ko');
       cb([...filtered]);
     });
   }
 
-  public getAllNews(): TourNewsFact[] {
-    return [...this.mockNews];
+  // ----------------------------------------------------
+  // 한국어 학습 콘텐츠 (languageContent) 실시간 구독
+  // ----------------------------------------------------
+  public subscribeToLanguageContent(callback: LanguageUpdateCallback): () => void {
+    if (isFirebaseConfigured && db) {
+      const q = query(collection(db, 'languageContent'));
+      return onSnapshot(q, (snapshot) => {
+        if (!snapshot.empty) {
+          const items = snapshot.docs.map(d => d.data() as LanguageContentItem);
+          callback(items);
+        } else {
+          callback(this.mockLang);
+        }
+      }, (err) => {
+        console.warn('[Firestore] Language Content fallback:', err);
+        callback(this.mockLang);
+      });
+    }
+
+    this.langListeners.push(callback);
+    callback(this.mockLang);
+    return () => {
+      this.langListeners = this.langListeners.filter(l => l !== callback);
+    };
+  }
+
+  public async updateLanguageReviewStatus(contentId: string, reviewStatus: LanguageContentItem['reviewStatus']) {
+    this.mockLang = this.mockLang.map(l =>
+      l.contentId === contentId ? { ...l, reviewStatus } : l
+    );
+
+    if (isFirebaseConfigured && db) {
+      try {
+        const docRef = doc(db, 'languageContent', contentId);
+        await updateDoc(docRef, { reviewStatus });
+      } catch (err) {
+        console.warn('Firestore lang update failed:', err);
+      }
+    }
+
+    this.langListeners.forEach(cb => cb([...this.mockLang]));
   }
 }
 
