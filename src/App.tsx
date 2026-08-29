@@ -1,15 +1,18 @@
 import { useState, useMemo } from 'react';
-import { allArtistsCatalog, btsTourEvents, blackpinkTourEvents } from './data/artistsCatalog';
+import { allArtistsCatalog, btsTourEvents, blackpinkTourEvents, seventeenTourEvents, strayKidsTourEvents } from './data/artistsCatalog';
 import { initialBigBangTourEvents, sampleNewsFacts, sampleAuditLogs } from './data/initialData';
+import { sampleLanguageContents } from './data/sampleLanguageContent';
 import { useTourEvents } from './hooks/useTourEvents';
 import { useLanguage } from './hooks/useLanguage';
 import { GdAnchorHero } from './components/GdAnchorHero';
 import { WorldTourMap } from './components/WorldTourMap';
 import { NewsFactFeed } from './components/NewsFactFeed';
+import { LanguageContentFeed } from './components/LanguageContentFeed';
+import { ConcertPhraseWidget } from './components/ConcertPhraseWidget';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { AdminDashboard } from './components/AdminDashboard';
 import { ArtistSelector } from './components/ArtistSelector';
-import { TourEvent, TourNewsFact, PipelineAuditLog } from './types/types';
+import { TourEvent, TourNewsFact, PipelineAuditLog, LanguageContentItem } from './types/types';
 
 export default function App() {
   const { currentLang, setCurrentLang } = useLanguage('ko');
@@ -19,6 +22,7 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [allNews, setAllNews] = useState<TourNewsFact[]>(sampleNewsFacts);
+  const [allLangContent, setAllLangContent] = useState<LanguageContentItem[]>(sampleLanguageContents);
   const [auditLogs] = useState<PipelineAuditLog[]>(sampleAuditLogs);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
 
@@ -27,7 +31,6 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // 선택된 아티스트 프로필 & 투어 데이터 동적 매핑
   const currentProfile = useMemo(() => {
     return allArtistsCatalog.find(a => a.artistId === selectedArtistId) || allArtistsCatalog[0];
   }, [selectedArtistId]);
@@ -35,6 +38,8 @@ export default function App() {
   const currentEvents = useMemo(() => {
     if (selectedArtistId === 'bts') return btsTourEvents;
     if (selectedArtistId === 'blackpink') return blackpinkTourEvents;
+    if (selectedArtistId === 'seventeen') return seventeenTourEvents;
+    if (selectedArtistId === 'stray-kids') return strayKidsTourEvents;
     return gdEvents.length > 0 ? gdEvents : initialBigBangTourEvents;
   }, [selectedArtistId, gdEvents]);
 
@@ -54,26 +59,38 @@ export default function App() {
     await updateStatus(selectedEv.eventId, nextStatus);
   };
 
+  // 뉴스 승인/반려
   const handleApproveNews = (newsId: string) => {
-    setAllNews((prev) =>
-      prev.map((n) => (n.newsId === newsId ? { ...n, reviewStatus: 'approved' } : n))
-    );
+    setAllNews(prev => prev.map(n => n.newsId === newsId ? { ...n, reviewStatus: 'approved' } : n));
     showToast('✓ 해당 뉴스 팩트가 승인되어 공개 피드에 노출됩니다!');
   };
 
   const handleRejectNews = (newsId: string, reason: string) => {
-    setAllNews((prev) =>
-      prev.map((n) => (n.newsId === newsId ? { ...n, reviewStatus: 'rejected', rejectionReason: reason } : n))
-    );
+    setAllNews(prev => prev.map(n => n.newsId === newsId ? { ...n, reviewStatus: 'rejected', rejectionReason: reason } : n));
     showToast('✕ 해당 뉴스 팩트가 반려 처리되었습니다.');
+  };
+
+  // 한국어 학습 콘텐츠 승인/반려
+  const handleApproveLang = (contentId: string) => {
+    setAllLangContent(prev => prev.map(l => l.contentId === contentId ? { ...l, reviewStatus: 'approved' } : l));
+    showToast('✓ 한국어 학습 표현이 승인되어 피드에 노출됩니다!');
+  };
+
+  const handleRejectLang = (contentId: string) => {
+    setAllLangContent(prev => prev.map(l => l.contentId === contentId ? { ...l, reviewStatus: 'rejected' } : l));
+    showToast('✕ 해당 한국어 학습 표현이 반려되었습니다.');
   };
 
   const targetLang = currentLang === 'sea' ? 'en' : currentLang;
   const approvedNews = allNews.filter(
-    (n) => n.reviewStatus === 'approved' && n.language === targetLang
+    (n) => n.reviewStatus === 'approved' &&
+           (n.artistId === selectedArtistId || selectedArtistId === 'bigbang-gd') &&
+           (n.language === targetLang || n.language === 'ko')
   );
 
-  const pendingCount = allNews.filter((n) => n.reviewStatus === 'pending').length;
+  const totalPending =
+    allNews.filter(n => n.reviewStatus === 'pending').length +
+    allLangContent.filter(l => l.reviewStatus === 'pending').length;
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '28px 20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -101,8 +118,11 @@ export default function App() {
         <AdminDashboard
           newsList={allNews}
           auditLogs={auditLogs}
-          onApprove={handleApproveNews}
-          onReject={handleRejectNews}
+          languageItems={allLangContent}
+          onApproveNews={handleApproveNews}
+          onRejectNews={handleRejectNews}
+          onApproveLang={handleApproveLang}
+          onRejectLang={handleRejectLang}
           onClose={() => setIsAdminOpen(false)}
         />
       )}
@@ -113,7 +133,7 @@ export default function App() {
             K-POP TOUR PULSE
           </h1>
           <span style={{ fontSize: '12px', color: '#22c55e', fontWeight: 600 }}>
-            ● Multi-Artist Global World Tour Network
+            ● 5대 메가 아티스트 글로벌 월드투어 & 한국어 학습 네트워크
           </span>
         </div>
 
@@ -131,13 +151,13 @@ export default function App() {
               cursor: 'pointer'
             }}
           >
-            ⚙️ 관리자 콘솔 ({pendingCount})
+            ⚙️ 관리자 콘솔 ({totalPending})
           </button>
           <LanguageSwitcher currentLang={currentLang} onLanguageChange={setCurrentLang} />
         </div>
       </header>
 
-      {/* Tier-1 아티스트 셀렉터 바 (GD / BTS / BLACKPINK) */}
+      {/* 아티스트 셀렉터 바 */}
       <ArtistSelector
         artists={allArtistsCatalog}
         selectedArtistId={selectedArtistId}
@@ -147,6 +167,9 @@ export default function App() {
           setViewMode('anchor');
         }}
       />
+
+      {/* 콘서트 필수 표현 미니 위젯 */}
+      <ConcertPhraseWidget items={allLangContent} lang={currentLang} />
 
       {viewMode === 'anchor' && (
         <GdAnchorHero
@@ -163,6 +186,12 @@ export default function App() {
       />
 
       <NewsFactFeed news={approvedNews} />
+
+      {/* 한국어 팬덤 & 공연 표현 학습 피드 */}
+      <LanguageContentFeed
+        items={allLangContent}
+        currentLanguage={currentLang}
+      />
     </div>
   );
 }

@@ -1,42 +1,39 @@
-export type TourStatus = 'scheduled' | 'ticketOpen' | 'inProgress' | 'completed';
 export type LanguageCode = 'ko' | 'en' | 'ja' | 'zh' | 'sea';
-export type ReviewStatus = 'pending' | 'approved' | 'rejected';
 
 export interface LocalizedString {
   ko: string;
   en: string;
   ja: string;
   zh: string;
-  sea?: string;
+  sea: string;
 }
 
-export interface Coordinates {
-  lat: number;
-  lng: number;
-}
+export type ReviewStatus = 'pending' | 'approved' | 'rejected';
 
 export interface TourEvent {
   eventId: string;
   tourId: string;
   artistId: string;
-  artistName: LocalizedString;
+  artistName: Record<string, string>;
   city: LocalizedString;
   country: string;
-  venueName: string;
-  coordinates: Coordinates;
+  venueName: LocalizedString | string;
+  coordinates: {
+    lat: number;
+    lng: number;
+  };
   eventDate: string;
-  showCount?: number;
-  ticketOpenDate?: string;
-  ticketUrl?: string;
-  status: TourStatus;
+  showCount: number;
+  status: 'scheduled' | 'ticketOpen' | 'inProgress' | 'completed';
   isHighlight?: boolean;
+  ticketUrl?: string;
 }
 
 export interface TourNewsFact {
   newsId: string;
   artistId: string;
-  tourId?: string;
-  language: 'ko' | 'en' | 'ja' | 'zh';
+  tourId: string;
+  language: string;
   title: string;
   factSummary: string[];
   sourceName: string;
@@ -52,7 +49,7 @@ export interface PipelineAuditLog {
   timestamp: string;
   articleTitle: string;
   sourceUrl: string;
-  status: 'SUCCESS' | 'BLOCKED_NGRAM' | 'RETRY_TRIGGERED' | 'INVALID_SOURCE';
+  status: 'SUCCESS' | 'BLOCKED_NGRAM' | 'RETRY_TRIGGERED' | 'FAILED_PARSING';
   ngramMatchCount?: number;
   detectedOverlapSnippet?: string;
   detail: string;
@@ -63,4 +60,30 @@ export interface ArtistProfile {
   name: LocalizedString;
   description: LocalizedString;
   isAnchor?: boolean;
+}
+
+// ----------------------------------------------------
+// 한국어 학습 콘텐츠 (Language Content) 스키마
+// ----------------------------------------------------
+export interface LanguageContentTranslation {
+  term: string;
+  meaning: string;
+}
+
+export interface LanguageContentItem {
+  contentId: string;
+  category: 'fandomTerms' | 'onomatopoeia';
+  level: 'beginner' | 'intermediate' | 'advanced';
+  koreanText: string;
+  romanization: string;
+  audioScript: string;
+  translations: {
+    en: LanguageContentTranslation;
+    ja: LanguageContentTranslation;
+    'zh-TW': LanguageContentTranslation;
+    th: LanguageContentTranslation;
+  };
+  culturalNote?: string;
+  reviewStatus: ReviewStatus;
+  createdAt: string;
 }
