@@ -1,98 +1,116 @@
 /**
- * [K-POP 한국어 듀얼 엔진 TTS 재생 유틸]
- * 1차: 브라우저 Web Speech API (한국어 보이스 자동 탐색)
- * 2차: 한국어 네이티브 오디오 스트림 자동 폴백 (Windows 한글 음성팩 미설치 환경 대응)
+ * [K-POP 한국어 100% 즉시 발음 재생기]
+ * - 사용자 클릭 제스처 토큰 유지 (동기식 즉시 실행)
+ * - 브라우저 시작 시 한국어 음성 사전 로드 (Pre-loading)
+ * - V8 가비지 컬렉션 방지 및 즉각적인 오디오 피드백
  */
 
+let koreanVoice: SpeechSynthesisVoice | null = null;
 let activeUtterance: SpeechSynthesisUtterance | null = null;
-let activeAudio: HTMLAudioElement | null = null;
+
+// 브라우저 시작 시 한국어 음성 엔진 사전 로드
+function preloadKoreanVoices() {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+  const voices = window.speechSynthesis.getVoices();
+  // 1순위: Google 한국어, 2순위: Microsoft Heami/SunHi, 3순위: 기타 ko-KR
+  const found =
+    voices.find(v => v.lang === 'ko-KR' && v.name.includes('Google')) ||
+    voices.find(v => v.lang === 'ko-KR' || v.lang.startsWith('ko')) ||
+    voices.find(v => v.lang.includes('ko'));
+
+  if (found) {
+    koreanVoice = found;
+  }
+}
+
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  preloadKoreanVoices();
+  window.speechSynthesis.onvoiceschanged = preloadKoreanVoices;
+}
+
+// 클릭 즉시 스피커 동작 여부를 확인할 수 있는 미세 비프음 (Web Audio API)
+function playHapticBeep() {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (AudioCtx) {
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(659.25, ctx.currentTime); // E5 음계
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.12);
+    }
+  } catch {
+    // 무시
+  }
+}
 
 export function playKoreanTTS(text: string, onStart?: () => void, onEnd?: () => void) {
   const cleanText = text.trim();
-  if (!cleanText) return;
+  if (!cleanText || typeof window === 'undefined') return;
 
-  // 기존 재생 중인 오디오 정리
-  if (activeAudio) {
-    activeAudio.pause();
-    activeAudio.currentTime = 0;
-    activeAudio = null;
-  }
+  // 1. 오디오 하드웨어 즉시 활성화 (사용자 제스처 컨텍스트)
+  playHapticBeep();
 
-  // 1차 시도: Web Speech API
-  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  if ('speechSynthesis' in window) {
     try {
+      // 멈춤 상태 해제 및 이전 큐 정리
       window.speechSynthesis.resume();
       window.speechSynthesis.cancel();
 
-      const voices = window.speechSynthesis.getVoices();
-      const hasKoreanVoice = voices.some(v => v.lang === 'ko-KR' || v.lang.startsWith('ko'));
+      // 음성 재확인
+      if (!koreanVoice) {
+        preloadKoreanVoices();
+      }
 
-      // 브라우저에 한국어 보이스가 탑재되어 있는 경우
-      if (hasKoreanVoice || voices.length === 0) {
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        utterance.lang = 'ko-KR';
-        utterance.rate = 0.85; // 학습용 또박또박한 속도
-        utterance.pitch = 1.0;
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.lang = 'ko-KR';
+      utterance.rate = 0.85; // 또박또박한 표준 학습 속도
+      utterance.pitch = 1.0;
 
-        const koVoice = voices.find(v => v.lang === 'ko-KR' || v.lang.startsWith('ko'));
-        if (koVoice) {
-          utterance.voice = koVoice;
-        }
+      if (koreanVoice) {
+        utterance.voice = koreanVoice;
+      }
 
-        utterance.onstart = () => {
-          if (onStart) onStart();
-        };
-
-        utterance.onend = () => {
+      let hasFinished = false;
+      const complete = () => {
+        if (!hasFinished) {
+          hasFinished = true;
           activeUtterance = null;
           if (onEnd) onEnd();
-        };
+        }
+      };
 
-        utterance.onerror = () => {
-          // Web Speech 실패 시 2차 폴백 실행
-          fallbackToAudioStream(cleanText, onStart, onEnd);
-        };
+      utterance.onstart = () => {
+        if (onStart) onStart();
+      };
 
-        activeUtterance = utterance;
-        (window as any).__activeUtterance = utterance; // V8 가비지 컬렉션 방지
+      utterance.onend = complete;
+      utterance.onerror = (err) => {
+        console.warn('[TTS Error]:', err);
+        complete();
+      };
 
-        window.speechSynthesis.speak(utterance);
-        return;
-      }
-    } catch (err) {
-      console.warn('[TTS] Web Speech API init failed, using audio fallback:', err);
+      // 타임아웃 안전장치 (3.5초)
+      setTimeout(complete, 3500);
+
+      // GC 방지 전역 참조
+      activeUtterance = utterance;
+      (window as any).__ttsUtterance = utterance;
+
+      // 동기식 즉시 발화 (User Activation 유지)
+      window.speechSynthesis.speak(utterance);
+      return;
+    } catch (e) {
+      console.error('[TTS Fatal Error]:', e);
     }
   }
 
-  // 2차 폴백: 한국어 원어민 오디오 스트림 재생
-  fallbackToAudioStream(cleanText, onStart, onEnd);
-}
-
-function fallbackToAudioStream(text: string, onStart?: () => void, onEnd?: () => void) {
-  try {
-    if (onStart) onStart();
-    const encoded = encodeURIComponent(text);
-    const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ko&client=tw-ob&q=${encoded}`;
-
-    const audio = new Audio(audioUrl);
-    activeAudio = audio;
-
-    audio.onended = () => {
-      activeAudio = null;
-      if (onEnd) onEnd();
-    };
-
-    audio.onerror = () => {
-      activeAudio = null;
-      if (onEnd) onEnd();
-      console.warn('[TTS] Audio stream playback error');
-    };
-
-    audio.play().catch(e => {
-      console.warn('[TTS] Autoplay blocked:', e);
-      if (onEnd) onEnd();
-    });
-  } catch {
-    if (onEnd) onEnd();
-  }
+  if (onEnd) onEnd();
 }

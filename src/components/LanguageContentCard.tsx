@@ -16,7 +16,6 @@ export const LanguageContentCard: React.FC<Props> = ({
   const [isNoteOpen, setIsNoteOpen] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
 
-  // 전역 LanguageCode ('ko' | 'en' | 'ja' | 'zh' | 'sea') -> 카드 translations 매핑
   const translationKey =
     currentLanguage === 'ja'
       ? 'ja'
@@ -28,10 +27,10 @@ export const LanguageContentCard: React.FC<Props> = ({
 
   const translation = item.translations[translationKey] || item.translations.en;
 
-  // 듀얼 엔진 음성 재생 핸들러
+  // 동기식 즉각 발음 재생
   const handlePlayTTS = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
-    if (isPlayingAudio) return;
 
     playKoreanTTS(
       item.audioScript || item.koreanText,
@@ -47,13 +46,13 @@ export const LanguageContentCard: React.FC<Props> = ({
       style={{
         background: '#121622',
         borderRadius: '16px',
-        border: '1px solid #232a3d',
+        border: isPlayingAudio ? '1px solid #eab308' : '1px solid #232a3d',
         padding: variant === 'compact' ? '20px' : '28px',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-        transition: 'transform 0.15s ease, border-color 0.15s ease'
+        boxShadow: isPlayingAudio ? '0 0 20px rgba(234, 179, 8, 0.25)' : '0 8px 24px rgba(0,0,0,0.4)',
+        transition: 'all 0.15s ease'
       }}
     >
       <div>
@@ -93,23 +92,24 @@ export const LanguageContentCard: React.FC<Props> = ({
           </div>
 
           <button
+            type="button"
             onClick={handlePlayTTS}
-            title="한국어 원어민 발음 듣기"
+            title="한국어 발음 듣기"
             style={{
               background: isPlayingAudio ? '#eab308' : '#1e2433',
               color: isPlayingAudio ? '#000' : '#ffd700',
               border: isPlayingAudio ? '2px solid #fef08a' : '1px solid #ca8a04',
               borderRadius: '50%',
-              width: '44px',
-              height: '44px',
+              width: '46px',
+              height: '46px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              fontSize: '18px',
+              fontSize: '20px',
               transition: 'all 0.15s ease',
               boxShadow: isPlayingAudio ? '0 0 16px rgba(234, 179, 8, 0.6)' : 'none',
-              transform: isPlayingAudio ? 'scale(1.1)' : 'scale(1)',
+              transform: isPlayingAudio ? 'scale(1.12)' : 'scale(1)',
               flexShrink: 0
             }}
           >
@@ -132,6 +132,7 @@ export const LanguageContentCard: React.FC<Props> = ({
       {item.culturalNote && (
         <div style={{ marginTop: '14px', borderTop: '1px solid #1e2433', paddingTop: '10px' }}>
           <button
+            type="button"
             onClick={() => setIsNoteOpen(!isNoteOpen)}
             style={{
               background: 'transparent',
