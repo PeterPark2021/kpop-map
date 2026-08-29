@@ -1,8 +1,8 @@
 export type LanguageCode = 'ko' | 'en' | 'ja' | 'zh' | 'sea' | string;
 
 export interface LocalizedString {
-  ko: string;
-  en: string;
+  ko?: string;
+  en?: string;
   ja?: string;
   zh?: string;
   sea?: string;
@@ -17,11 +17,11 @@ export interface TourEvent {
   artistId: string;
   artistName: LocalizedString;
   city: LocalizedString;
-  country: string;
-  venueName: string | LocalizedString;
+  country?: string;
+  venueName?: string | LocalizedString;
   eventDate: string;
   status: 'ticketOpen' | 'inProgress' | 'completed' | 'scheduled' | string;
-  showCount: number;
+  showCount?: number;
   coordinates: {
     lat: number;
     lng: number;
@@ -36,12 +36,13 @@ export interface TourEvent {
 export interface ArtistProfile {
   artistId: string;
   name: LocalizedString;
-  description: LocalizedString;
-  anchorCity: LocalizedString;
-  totalShows: number;
-  statusText: LocalizedString;
-  imageUrl: string;
-  accentColor: string;
+  description?: LocalizedString;
+  anchorCity?: LocalizedString;
+  totalShows?: number;
+  statusText?: LocalizedString;
+  imageUrl?: string;
+  accentColor?: string;
+  isAnchor?: boolean;
   [key: string]: any;
 }
 
@@ -49,12 +50,16 @@ export interface TourNewsFact {
   newsId: string;
   tourId?: string;
   artistId: string;
-  headline: string;
-  summary: string;
-  source: string;
-  sourceUrl: string;
-  publishedAt: string;
-  language: string;
+  headline?: string;
+  title?: string;
+  summary?: string;
+  factSummary?: string[];
+  source?: string;
+  sourceName?: string;
+  sourceUrl?: string;
+  isOfficial?: boolean;
+  publishedAt?: string;
+  language?: string;
   reviewStatus: ReviewStatus;
   rejectionReason?: string;
   verificationConfidence?: number;
@@ -64,14 +69,21 @@ export interface TourNewsFact {
 export interface LanguageContentItem {
   contentId: string;
   category?: string;
-  koreanPhrase: string;
-  pronunciation: string;
-  englishMeaning: string;
+  level?: string;
+  koreanPhrase?: string;
+  koreanText?: string;
+  pronunciation?: string;
+  romanization?: string;
+  englishMeaning?: string;
   japaneseMeaning?: string;
   chineseMeaning?: string;
-  contextUsage: string;
+  audioScript?: string;
+  translations?: any;
+  culturalNote?: string;
+  contextUsage?: string;
   reviewStatus: ReviewStatus;
   audioUrl?: string;
+  createdAt?: string;
   [key: string]: any;
 }
 

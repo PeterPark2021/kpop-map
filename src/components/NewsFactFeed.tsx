@@ -17,10 +17,10 @@ export const NewsFactFeed: React.FC<Props> = ({ news }) => {
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
         <h3 style={{ margin: 0, color: '#f8fafc', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          📰 저작권 안심 팩트 피드 (Copyright-Safe Fact Feed)
+          ?벐 ??묎텒 ?덉떖 ?⑺듃 ?쇰뱶 (Copyright-Safe Fact Feed)
         </h3>
         <span style={{ fontSize: '12px', background: '#0369a1', color: '#e0f2fe', padding: '3px 10px', borderRadius: '20px', fontWeight: 600 }}>
-          AI 팩트 추출 & 5개 국어 자동 번역
+          AI ?⑺듃 異붿텧 & 5媛?援?뼱 ?먮룞 踰덉뿭
         </span>
       </div>
 
@@ -43,21 +43,21 @@ export const NewsFactFeed: React.FC<Props> = ({ news }) => {
                 </span>
                 {item.isOfficial && (
                   <span style={{ background: '#059669', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
-                    ✓ 공식 인증 출처
+                    ??怨듭떇 ?몄쬆 異쒖쿂
                   </span>
                 )}
               </div>
             </div>
 
             <ul style={{ margin: '0 0 12px 0', paddingLeft: '20px', color: '#cbd5e1', fontSize: '14px', lineHeight: '1.7' }}>
-              {(item.factSummary || []).map((fact, idx) => (
+              {(item.factSummary || []).map((fact: string, idx: number) => (
                 <li key={idx} style={{ marginBottom: '4px' }}>{fact}</li>
               ))}
             </ul>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #232a3d', paddingTop: '10px' }}>
               <small style={{ color: '#64748b', fontSize: '12px' }}>
-                출처: <strong>{item.sourceName}</strong>
+                異쒖쿂: <strong>{item.sourceName}</strong>
               </small>
               <small style={{ color: '#64748b', fontSize: '12px' }}>
                 {new Date(item.publishedAt).toLocaleDateString()}
