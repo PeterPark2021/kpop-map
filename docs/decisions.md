@@ -39,3 +39,12 @@
   1. **브루트포스 공격 차단**: 4자리 PIN의 사전 공격/무차별 대입 공격 취약성을 원천 제거.
   2. **클라이언트 조작 불가**: `request.auth.token.admin == true`를 Firestore Security Rules 레벨에서 강제하여 클라이언트 변조를 방지.
   3. **감사 추적성(Audit Trail)**: 어떤 관리자 계정이 뉴스나 언어 콘텐츠를 승인/반려했는지 계정별 추적 가능.
+---
+
+## ADR-006: SEO 렌더링 전략 및 Discord 웹훅 통합 (X 자동화 보류)
+- **상태**: 승인됨 (Accepted)
+- **일자**: 2026-08-29
+- **결정 사항**:
+  1. **SEO 전략**: 정적 `sitemap.xml`, `robots.txt`, Schema.org `MusicEvent`/`MusicGroup` JSON-LD 구조화 데이터 및 Open Graph 리치 카드 태그를 적용하여 검색엔진 색인 및 소셜 공유 최적화.
+  2. **멀티채널 디스패처**: 단일 트랜잭션 관문(`notifiedStatuses`)을 통해 이메일과 Discord 웹훅으로 독립적 팬아웃(Fan-out) 구현 (장애 격리).
+  3. **X(트위터) 자동화 보류**: X API 유료화(월 $100~ 최소 비용)로 인해 이번 릴리즈에서 제외하고, 무료 채널인 Discord 웹훅을 우선 도입. (향후 예산 승인 시 1줄로 추가 가능한 디스패처 구조 확보).

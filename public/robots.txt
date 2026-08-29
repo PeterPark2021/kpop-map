@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Allow: /artists/
+Allow: /tours/
+Allow: /cities/
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: https://kpop-map-prod.web.app/sitemap.xml
