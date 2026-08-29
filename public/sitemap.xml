@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://kpop-map-prod.web.app/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <!-- 5대 메가 아티스트 -->
+  <url><loc>https://kpop-map-prod.web.app/artists/g-dragon</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://kpop-map-prod.web.app/artists/bts</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://kpop-map-prod.web.app/artists/blackpink</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://kpop-map-prod.web.app/artists/seventeen</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://kpop-map-prod.web.app/artists/stray-kids</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <!-- 주요 투어 -->
+  <url><loc>https://kpop-map-prod.web.app/tours/gd-uber-mensch-2026</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://kpop-map-prod.web.app/tours/bts-world-2026</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <!-- 주요 도시 -->
+  <url><loc>https://kpop-map-prod.web.app/cities/seoul</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://kpop-map-prod.web.app/cities/tokyo</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://kpop-map-prod.web.app/cities/la</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+</urlset>

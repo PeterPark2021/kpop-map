@@ -62,9 +62,6 @@ export interface ArtistProfile {
   isAnchor?: boolean;
 }
 
-// ----------------------------------------------------
-// 한국어 학습 콘텐츠 (Language Content) 스키마
-// ----------------------------------------------------
 export interface LanguageContentTranslation {
   term: string;
   meaning: string;
@@ -77,6 +74,7 @@ export interface LanguageContentItem {
   koreanText: string;
   romanization: string;
   audioScript: string;
+  audioUrl?: string; // 정식 Cloud TTS 사전 생성 오디오 URL
   translations: {
     en: LanguageContentTranslation;
     ja: LanguageContentTranslation;

@@ -11,7 +11,7 @@ interface Props {
 export const WorldTourMap: React.FC<Props> = ({ events, lang, onSelectEvent }) => {
   const [viewTab, setViewTab] = useState<'map' | 'list'>('map');
 
-  const getVenueName = (venue: string | LocalizedString | undefined): string => {
+  const getVenueDisplay = (venue: string | LocalizedString | undefined): string => {
     if (!venue) return '';
     if (typeof venue === 'string') return venue;
     return venue[lang] || venue.en || '';
@@ -29,7 +29,6 @@ export const WorldTourMap: React.FC<Props> = ({ events, lang, onSelectEvent }) =
           </span>
         </div>
 
-        {/* 탭 전환 (지도 뷰 / 리스트 뷰) */}
         <div style={{ display: 'flex', background: '#121622', padding: '3px', borderRadius: '8px', border: '1px solid #283042' }}>
           <button
             onClick={() => setViewTab('map')}
@@ -70,7 +69,7 @@ export const WorldTourMap: React.FC<Props> = ({ events, lang, onSelectEvent }) =
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
           {events.map(ev => {
             const cityName = ev.city[lang] || ev.city.en;
-            const venueDisplay = getVenueName(ev.venueName);
+            const venueDisplay = getVenueDisplay(ev.venueName);
             const artistName = ev.artistName[lang] || ev.artistName.en || 'K-POP';
 
             return (
@@ -98,7 +97,7 @@ export const WorldTourMap: React.FC<Props> = ({ events, lang, onSelectEvent }) =
                 </div>
 
                 <h3 style={{ margin: '8px 0 2px 0', fontSize: '1.2rem', color: '#f8fafc' }}>{cityName}</h3>
-                <p style={{ margin: '0 0 6px 0', color: '#94a3b8', fontSize: '12px' }}>{venueDisplay}</p>
+                <p style={{ margin: '8px 0 4px 0', color: '#94a3b8', fontSize: '13px' }}>{venueDisplay}</p>
                 <div style={{ fontSize: '11px', color: '#64748b' }}>
                   📅 {new Date(ev.eventDate).toLocaleDateString()} ({ev.showCount}회)
                 </div>

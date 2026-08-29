@@ -52,7 +52,7 @@ function MapBoundsManager({ events }: { events: TourEvent[] }) {
 export const InteractiveMap: React.FC<Props> = ({ events, lang, onSelectEvent }) => {
   const polylineCoords = events.map(e => [e.coordinates.lat, e.coordinates.lng] as [number, number]);
 
-  const getVenueName = (venue: string | LocalizedString | undefined): string => {
+  const getVenueDisplay = (venue: string | LocalizedString | undefined): string => {
     if (!venue) return '';
     if (typeof venue === 'string') return venue;
     return venue[lang] || venue.en || '';
@@ -87,7 +87,7 @@ export const InteractiveMap: React.FC<Props> = ({ events, lang, onSelectEvent })
           const icon = isLive ? customLiveIcon : customGoldIcon;
           const cityName = ev.city[lang] || ev.city.en;
           const artistName = ev.artistName[lang] || ev.artistName.en || 'K-POP';
-          const venueDisplay = getVenueName(ev.venueName);
+          const venueDisplay = getVenueDisplay(ev.venueName);
 
           return (
             <Marker

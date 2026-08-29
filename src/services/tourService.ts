@@ -1,112 +1,103 @@
-import { collection, onSnapshot, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from '../lib/firebase';
-import { TourEvent, TourNewsFact, LanguageContentItem } from '../types/types';
+import { TourEvent, TourNewsFact, LanguageContentItem, ReviewStatus } from '../types/types';
 import { initialBigBangTourEvents, sampleNewsFacts } from '../data/initialData';
 import { sampleLanguageContents } from '../data/sampleLanguageContent';
 
-export type EventUpdateCallback = (events: TourEvent[]) => void;
-export type NewsUpdateCallback = (news: TourNewsFact[]) => void;
-export type LanguageUpdateCallback = (items: LanguageContentItem[]) => void;
-
 class TourService {
-  private mockEvents: TourEvent[] = [...initialBigBangTourEvents];
-  private mockNews: TourNewsFact[] = [...sampleNewsFacts];
-  private mockLang: LanguageContentItem[] = [...sampleLanguageContents];
-  private eventListeners: EventUpdateCallback[] = [];
-  private newsListeners: { lang: string; cb: NewsUpdateCallback }[] = [];
-  private langListeners: LanguageUpdateCallback[] = [];
+  private mockEvents: TourEvent[] = initialBigBangTourEvents;
+  private mockNews: TourNewsFact[] = sampleNewsFacts;
+  private mockLang: LanguageContentItem[] = sampleLanguageContents;
 
-  public subscribeToTourEvents(callback: EventUpdateCallback): () => void {
+  public subscribeToTourEvents(callback: (events: TourEvent[]) => void): () => void {
     if (isFirebaseConfigured && db) {
-      const q = query(collection(db, 'events'));
-      return onSnapshot(q, (snapshot) => {
+      const eventsCol = collection(db, 'events');
+      return onSnapshot(eventsCol, (snapshot) => {
         if (!snapshot.empty) {
-          const events = snapshot.docs.map((d) => d.data() as TourEvent);
+          const events = snapshot.docs.map(d => d.data() as TourEvent);
           callback(events);
         } else {
           callback(this.mockEvents);
         }
-      }, () => callback(this.mockEvents));
+      }, (err) => {
+        console.warn('[Firestore] Events fallback:', err);
+        callback(this.mockEvents);
+      });
     }
-
-    this.eventListeners.push(callback);
     callback(this.mockEvents);
-    return () => {
-      this.eventListeners = this.eventListeners.filter(l => l !== callback);
-    };
+    return () => {};
   }
 
-  public async updateEventStatus(eventId: string, status: TourEvent['status']) {
+  public subscribeToEvents(callback: (events: TourEvent[]) => void): () => void {
+    return this.subscribeToTourEvents(callback);
+  }
+
+  public async updateEventStatus(eventId: string, status: TourEvent['status']): Promise<void> {
     if (isFirebaseConfigured && db) {
       try {
-        const docRef = doc(db, 'events', eventId);
-        await updateDoc(docRef, { status });
-        return;
+        const eventRef = doc(db, 'events', eventId);
+        await updateDoc(eventRef, { status });
       } catch (err) {
-        console.warn('Firestore update failed:', err);
+        console.warn('[Firestore] Update event error:', err);
       }
     }
-
-    this.mockEvents = this.mockEvents.map(e => e.eventId === eventId ? { ...e, status } : e);
-    this.eventListeners.forEach(cb => cb([...this.mockEvents]));
+    const event = this.mockEvents.find(e => e.eventId === eventId);
+    if (event) event.status = status;
   }
 
-  public subscribeToNewsFacts(artistId: string, lang: string, callback: NewsUpdateCallback): () => void {
-    const targetLang = lang === 'sea' ? 'en' : lang;
-
-    const emitCurrent = () => {
-      const filtered = this.mockNews.filter(
-        f => f.artistId === artistId && (f.language === targetLang || f.language === 'ko')
-      );
-      callback(filtered.length > 0 ? filtered : this.mockNews);
-    };
-
+  public subscribeToNewsFacts(artistId: string, lang: string, callback: (news: TourNewsFact[]) => void): () => void {
     if (isFirebaseConfigured && db) {
-      const q = query(collection(db, 'newsFacts'), where('artistId', '==', artistId));
-      return onSnapshot(q, (snapshot) => {
+      const newsCol = collection(db, 'newsFacts');
+      return onSnapshot(newsCol, (snapshot) => {
         if (!snapshot.empty) {
-          const facts = snapshot.docs.map(d => d.data() as TourNewsFact);
-          callback(facts);
+          const news = snapshot.docs.map(d => d.data() as TourNewsFact);
+          const filtered = news.filter(n =>
+            n.reviewStatus === 'approved' &&
+            (n.artistId === artistId || artistId === 'bigbang-gd') &&
+            (n.language === lang || n.language === 'ko')
+          );
+          callback(filtered);
         } else {
-          emitCurrent();
+          callback(this.mockNews);
         }
-      }, () => emitCurrent());
+      }, (err) => {
+        console.warn('[Firestore] News fallback:', err);
+        callback(this.mockNews);
+      });
     }
-
-    this.newsListeners.push({ lang: targetLang, cb: callback });
-    emitCurrent();
-    return () => {
-      this.newsListeners = this.newsListeners.filter(l => l.cb !== callback);
-    };
+    const filtered = this.mockNews.filter(n =>
+      n.reviewStatus === 'approved' &&
+      (n.artistId === artistId || artistId === 'bigbang-gd') &&
+      (n.language === lang || n.language === 'ko')
+    );
+    callback(filtered.length > 0 ? filtered : this.mockNews);
+    return () => {};
   }
 
-  public async updateNewsReviewStatus(newsId: string, reviewStatus: TourNewsFact['reviewStatus'], reason?: string) {
-    this.mockNews = this.mockNews.map(n =>
-      n.newsId === newsId ? { ...n, reviewStatus, rejectionReason: reason } : n
-    );
+  public subscribeToNews(callback: (news: TourNewsFact[]) => void): () => void {
+    return this.subscribeToNewsFacts('bigbang-gd', 'ko', callback);
+  }
 
+  public async updateNewsReviewStatus(newsId: string, reviewStatus: ReviewStatus, reason?: string): Promise<void> {
     if (isFirebaseConfigured && db) {
       try {
-        const docRef = doc(db, 'newsFacts', newsId);
-        await updateDoc(docRef, { reviewStatus, rejectionReason: reason || '' });
+        const newsRef = doc(db, 'newsFacts', newsId);
+        await updateDoc(newsRef, { reviewStatus, rejectionReason: reason || null });
       } catch (err) {
-        console.warn('Firestore news update failed:', err);
+        console.warn('[Firestore] Update news status error:', err);
       }
     }
-
-    this.newsListeners.forEach(({ lang, cb }) => {
-      const filtered = this.mockNews.filter(f => f.language === lang || f.language === 'ko');
-      cb([...filtered]);
-    });
+    const item = this.mockNews.find(n => n.newsId === newsId);
+    if (item) {
+      item.reviewStatus = reviewStatus;
+      if (reason) item.rejectionReason = reason;
+    }
   }
 
-  // ----------------------------------------------------
-  // 한국어 학습 콘텐츠 (languageContent) 실시간 구독
-  // ----------------------------------------------------
-  public subscribeToLanguageContent(callback: LanguageUpdateCallback): () => void {
+  public subscribeToLanguageContent(callback: (items: LanguageContentItem[]) => void): () => void {
     if (isFirebaseConfigured && db) {
-      const q = query(collection(db, 'languageContent'));
-      return onSnapshot(q, (snapshot) => {
+      const langCol = collection(db, 'languageContent');
+      return onSnapshot(langCol, (snapshot) => {
         if (!snapshot.empty) {
           const items = snapshot.docs.map(d => d.data() as LanguageContentItem);
           callback(items);
@@ -114,33 +105,25 @@ class TourService {
           callback(this.mockLang);
         }
       }, (err) => {
-        console.warn('[Firestore] Language Content fallback:', err);
+        console.warn('[Firestore] Language content fallback:', err);
         callback(this.mockLang);
       });
     }
-
-    this.langListeners.push(callback);
     callback(this.mockLang);
-    return () => {
-      this.langListeners = this.langListeners.filter(l => l !== callback);
-    };
+    return () => {};
   }
 
-  public async updateLanguageReviewStatus(contentId: string, reviewStatus: LanguageContentItem['reviewStatus']) {
-    this.mockLang = this.mockLang.map(l =>
-      l.contentId === contentId ? { ...l, reviewStatus } : l
-    );
-
+  public async updateLanguageReviewStatus(contentId: string, status: ReviewStatus): Promise<void> {
     if (isFirebaseConfigured && db) {
       try {
         const docRef = doc(db, 'languageContent', contentId);
-        await updateDoc(docRef, { reviewStatus });
+        await updateDoc(docRef, { reviewStatus: status });
       } catch (err) {
-        console.warn('Firestore lang update failed:', err);
+        console.warn('[Firestore] Update lang review error:', err);
       }
     }
-
-    this.langListeners.forEach(cb => cb([...this.mockLang]));
+    const item = this.mockLang.find(l => l.contentId === contentId);
+    if (item) item.reviewStatus = status;
   }
 }
 
