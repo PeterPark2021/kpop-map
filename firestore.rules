@@ -1,8 +1,25 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
     function isAdmin() {
-      return request.auth != null && (request.auth.token.admin == true || request.auth.token.email.matches('.*@galaxycorp[.]com$'));
+      return isAuthenticated() && request.auth.token.admin == true;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      // 🔒 [보안 강화] 클라이언트 직접 생성 원천 차단 (completeSignup Cloud Function 전용)
+      allow create: if false;
+      allow update: if isOwner(userId)
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ageVerified', 'ageVerifiedAt'])
+                    && request.resource.data.email == resource.data.email
+                    && request.resource.data.uid == resource.data.uid;
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     match /events/{eventId} {
@@ -10,33 +27,41 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    match /newsFacts/{newsId} {
+    match /tours/{tourId} {
       allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /newsFacts/{newsId} {
+      allow read: if resource.data.reviewStatus == 'approved' || isAdmin();
       allow write: if isAdmin();
     }
 
     match /languageContent/{contentId} {
+      allow read: if resource.data.reviewStatus == 'approved' || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /pipeline_audit_log/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /venues/{venueId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // 만 14세 인증(ageVerified == true)이 완료된 소유자만 사용자 문서 읽기/쓰기 가능
-    match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow create, update: if request.auth != null && request.auth.uid == userId
-                            && request.resource.data.ageVerified == true;
-      allow delete: if request.auth != null && request.auth.uid == userId;
+    match /entities/{entityId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /approvedImages/{imageId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     match /system_config/{configId} {
-      allow read, write: if isAdmin();
-    }
-
-    match /notificationLog/{logId} {
-      allow read, write: if false;
-    }
-
-    match /pipeline_audit_log/{logId} {
       allow read, write: if isAdmin();
     }
   }

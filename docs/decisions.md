@@ -80,3 +80,12 @@
   2. N-gram 및 정규식 기반 지능형 투어 팩트(도시, 공연장, 티켓일정) 추출 엔진 개발.
   3. 신뢰도 가중치 기반 자동 승인(`verificationConfidence >= 0.85`) 및 불확실 기사 검수 큐 격리 체계 구축.
   4. 관리자 대시보드 내 실시간 RSS 수집 모니터링 및 즉시 실행 트리거 연동 완료.
+---
+
+## ADR-012: 회원가입 서버사이드화(completeSignup) 및 관리자 클레임 무결성 확립
+- **상태**: 승인됨 (Accepted)
+- **일자**: 2026-08-30
+- **내용**:
+  1. 클라이언트 직접 `setDoc`을 `firestore.rules` 상에서 `allow create: if false;`로 완전 차단.
+  2. 서버 사이드 `completeSignup` Cloud Function 신규 구축: 서버에서 만 14세 엄격 검증, 만 14세 미만 시 Auth 계정 즉시 삭제 및 차단, 만 14세 이상 시 Admin SDK로 안전하게 `users/{uid}` 생성.
+  3. 관리자 계정 `2021.untact@gmail.com`에 `admin: true` 커스텀 클레임 공식 발급 완료.

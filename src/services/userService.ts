@@ -1,23 +1,24 @@
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signInWithPopup, 
-  signOut, 
-  onAuthStateChanged,
-  User as FirebaseUser 
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+  User
 } from 'firebase/auth';
-import { db, auth, googleProvider, isFirebaseConfigured } from '../lib/firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db, isFirebaseConfigured } from '../lib/firebase';
 import { UserProfile, UserNotificationPrefs } from '../types/types';
 
-export function checkIsAge14OrOlder(birthYear: number, birthMonth: number, currentDate: Date = new Date()): boolean {
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth() + 1; // 1 ~ 12
-  let age = currentYear - birthYear;
-  if (currentMonth < birthMonth) {
-    age--; // 생일 달이 아직 안 지남
-  }
-  return age >= 14;
+export interface AuthResult {
+  success: boolean;
+  user?: UserProfile;
+  requiresAgeVerification?: boolean;
+  uid?: string;
+  email?: string;
+  displayName?: string;
+  error?: string;
 }
 
 class UserService {
@@ -25,279 +26,204 @@ class UserService {
   private listeners: ((profile: UserProfile | null) => void)[] = [];
 
   constructor() {
-    this.initAuthListener();
-  }
-
-  private initAuthListener() {
-    if (isFirebaseConfigured && auth && db) {
-      onAuthStateChanged(auth, async (user) => {
+    if (isFirebaseConfigured && auth) {
+      auth.onAuthStateChanged(async (user: User | null) => {
         if (user) {
-          const profile = await this.fetchUserProfile(user.uid);
-          this.setCurrentProfile(profile);
+          if (db) {
+            try {
+              const userDoc = await getDoc(doc(db, 'users', user.uid));
+              if (userDoc.exists()) {
+                this.currentProfile = userDoc.data() as UserProfile;
+                this.notifyListeners();
+                return;
+              }
+            } catch (err) {
+              console.warn('[UserService] getDoc error:', err);
+            }
+          }
+          this.currentProfile = {
+            uid: user.uid,
+            email: user.email || '',
+            displayName: user.displayName || 'K-POP Fan',
+            favoriteArtistIds: ['bigbang-gd'],
+            ageVerified: true,
+            notificationPrefs: {
+              emailEnabled: false,
+              ticketOpen: true,
+              statusChange: true,
+              language: 'ko'
+            }
+          };
         } else {
-          this.setCurrentProfile(null);
+          this.currentProfile = null;
         }
+        this.notifyListeners();
       });
     }
   }
 
-  public subscribe(listener: (profile: UserProfile | null) => void): () => void {
-    this.listeners.push(listener);
-    listener(this.currentProfile);
+  public subscribe(callback: (profile: UserProfile | null) => void): () => void {
+    this.listeners.push(callback);
+    callback(this.currentProfile);
     return () => {
-      this.listeners = this.listeners.filter(l => l !== listener);
+      this.listeners = this.listeners.filter(l => l !== callback);
     };
+  }
+
+  private notifyListeners() {
+    this.listeners.forEach(l => l(this.currentProfile));
   }
 
   public getCurrentProfile(): UserProfile | null {
     return this.currentProfile;
   }
 
-  private setCurrentProfile(profile: UserProfile | null) {
-    this.currentProfile = profile;
-    this.listeners.forEach(l => l(profile));
-  }
-
-  public async fetchUserProfile(uid: string): Promise<UserProfile | null> {
-    if (isFirebaseConfigured && db) {
-      try {
-        const docRef = doc(db, 'users', uid);
-        const snap = await getDoc(docRef);
-        if (snap.exists()) {
-          return snap.data() as UserProfile;
-        }
-      } catch (err) {
-        console.warn('[UserService] fetchUserProfile error:', err);
-      }
+  // 1. 이메일 로그인
+  public async loginWithEmail(email: string, pass: string): Promise<AuthResult> {
+    if (!isFirebaseConfigured || !auth) return { success: false, error: 'Firebase가 설정되지 않았습니다.' };
+    try {
+      const res = await signInWithEmailAndPassword(auth, email, pass);
+      return { success: true, uid: res.user.uid, email: res.user.email || '' };
+    } catch (err: any) {
+      return { success: false, error: err.message || '이메일 또는 비밀번호가 올바르지 않습니다.' };
     }
-    return null;
   }
 
-  /**
-   * [이메일 회원가입 - 만 14세 나이 검증 포함]
-   */
+  // 2. 이메일 회원가입 (서버 사이드 completeSignup)
   public async signupWithEmail(
     email: string,
     pass: string,
     displayName: string,
     birthYear: number,
     birthMonth: number
-  ): Promise<{ success: boolean; error?: string }> {
-    // 1. 나이 검증 (만 14세 미만 차단)
-    if (!checkIsAge14OrOlder(birthYear, birthMonth)) {
-      return { 
-        success: false, 
-        error: 'UNDER_14_BLOCKED: 이 서비스는 만 14세 이상만 가입하실 수 있습니다.' 
-      };
-    }
-
-    if (!isFirebaseConfigured || !auth || !db) {
-      // 데모 모드
-      const demoProfile: UserProfile = {
-        uid: `demo_${Date.now()}`,
-        email,
-        displayName: displayName || 'K-POP 팬',
-        favoriteArtistIds: ['bigbang-gd'],
-        ageVerified: true,
-        ageVerifiedAt: new Date().toISOString(),
-        notificationPrefs: {
-          emailEnabled: false,
-          ticketOpen: true,
-          statusChange: true,
-          language: 'ko'
-        }
-      };
-      this.setCurrentProfile(demoProfile);
-      return { success: true };
-    }
-
+  ): Promise<AuthResult> {
+    if (!isFirebaseConfigured || !auth) return { success: false, error: 'Firebase가 설정되지 않았습니다.' };
+    
     try {
-      const cred = await createUserWithEmailAndPassword(auth, email, pass);
-      const newProfile: UserProfile = {
-        uid: cred.user.uid,
-        email,
-        displayName: displayName || email.split('@')[0],
-        favoriteArtistIds: ['bigbang-gd'],
-        ageVerified: true,
-        ageVerifiedAt: new Date().toISOString(),
-        notificationPrefs: {
-          emailEnabled: false,
-          ticketOpen: true,
-          statusChange: true,
-          language: 'ko'
-        }
-      };
-      await setDoc(doc(db, 'users', cred.user.uid), newProfile);
-      this.setCurrentProfile(newProfile);
-      return { success: true };
+      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+      const user = userCredential.user;
+
+      const functions = getFunctions();
+      const completeSignupFn = httpsCallable<any, { success: boolean; profile: UserProfile }>(
+        functions,
+        'completeSignup'
+      );
+
+      const result = await completeSignupFn({
+        birthYear,
+        birthMonth,
+        displayName: displayName || email.split('@')[0]
+      });
+
+      this.currentProfile = result.data.profile;
+      this.notifyListeners();
+      return { success: true, user: result.data.profile };
     } catch (err: any) {
-      return { success: false, error: err.message };
+      if (auth) await signOut(auth);
+      this.currentProfile = null;
+      this.notifyListeners();
+      const errMsg = err.message || '';
+      if (errMsg.includes('UNDER_14') || errMsg.includes('만 14세 미만')) {
+        return { success: false, error: 'UNDER_14_BLOCKED: 만 14세 미만은 법정대리인 동의 없이 회원가입이 불가능합니다.' };
+      }
+      return { success: false, error: errMsg || '회원가입 처리 중 오류가 발생했습니다.' };
     }
   }
 
-  /**
-   * [Google 소셜 로그인 및 최초 가입자 나이 검증]
-   */
-  public async signInWithGoogle(): Promise<{ success: boolean; requiresAgeVerification?: boolean; uid?: string; email?: string; displayName?: string; error?: string }> {
-    if (!isFirebaseConfigured || !auth || !googleProvider || !db) {
-      return this.signupWithEmail('demo_google@fan.com', '', 'Google 팬', 2000, 1);
-    }
-
+  // 3. 구글 로그인
+  public async signInWithGoogle(): Promise<AuthResult> {
+    if (!isFirebaseConfigured || !auth) return { success: false, error: 'Firebase가 설정되지 않았습니다.' };
     try {
-      const res = await signInWithPopup(auth, googleProvider);
+      const provider = new GoogleAuthProvider();
+      const res = await signInWithPopup(auth, provider);
       const user = res.user;
-      const existing = await this.fetchUserProfile(user.uid);
 
-      if (!existing || !existing.ageVerified) {
-        // 최초 가입자: 나이 확인 단계 필요
-        return {
-          success: true,
-          requiresAgeVerification: true,
-          uid: user.uid,
-          email: user.email || '',
-          displayName: user.displayName || 'Google 팬'
-        };
+      if (db) {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (!userDoc.exists()) {
+          // 신규 구글 유저 -> 나이 확인 단계 필요
+          return {
+            success: true,
+            requiresAgeVerification: true,
+            uid: user.uid,
+            email: user.email || '',
+            displayName: user.displayName || 'Google Fan'
+          };
+        }
+        this.currentProfile = userDoc.data() as UserProfile;
+        this.notifyListeners();
+        return { success: true, user: this.currentProfile };
       }
 
-      this.setCurrentProfile(existing);
-      return { success: true, requiresAgeVerification: false };
+      return { success: true, uid: user.uid, email: user.email || '' };
     } catch (err: any) {
-      return { success: false, error: err.message };
+      return { success: false, error: err.message || 'Google 로그인에 실패했습니다.' };
     }
   }
 
-  /**
-   * [소셜 로그인 가입자 나이 확인 완료 및 프로필 생성]
-   */
+  // 4. 소셜 신규 가입 나이 확인 완료
   public async completeSocialSignup(
     uid: string,
     email: string,
     displayName: string,
     birthYear: number,
     birthMonth: number
-  ): Promise<{ success: boolean; error?: string }> {
-    if (!checkIsAge14OrOlder(birthYear, birthMonth)) {
-      // 만 14세 미만일 경우 생성된 Auth 세션 로그아웃
-      if (auth) await signOut(auth);
-      return { 
-        success: false, 
-        error: 'UNDER_14_BLOCKED: 이 서비스는 만 14세 이상만 이용하실 수 있습니다.' 
-      };
-    }
-
-    const newProfile: UserProfile = {
-      uid,
-      email,
-      displayName,
-      favoriteArtistIds: ['bigbang-gd'],
-      ageVerified: true,
-      ageVerifiedAt: new Date().toISOString(),
-      notificationPrefs: {
-        emailEnabled: false,
-        ticketOpen: true,
-        statusChange: true,
-        language: 'ko'
-      }
-    };
-
-    if (isFirebaseConfigured && db) {
-      await setDoc(doc(db, 'users', uid), newProfile);
-    }
-    this.setCurrentProfile(newProfile);
-    return { success: true };
-  }
-
-  public async loginWithEmail(email: string, pass: string): Promise<{ success: boolean; error?: string }> {
-    if (!isFirebaseConfigured || !auth) {
-      return this.signupWithEmail(email, '', '로그인 팬', 2000, 1);
-    }
+  ): Promise<AuthResult> {
     try {
-      const res = await signInWithEmailAndPassword(auth, email, pass);
-      const profile = await this.fetchUserProfile(res.user.uid);
-      this.setCurrentProfile(profile);
-      return { success: true };
+      const functions = getFunctions();
+      const completeSignupFn = httpsCallable<any, { success: boolean; profile: UserProfile }>(
+        functions,
+        'completeSignup'
+      );
+
+      const result = await completeSignupFn({
+        birthYear,
+        birthMonth,
+        displayName: displayName || (email ? email.split('@')[0] : 'Fan')
+      });
+
+      this.currentProfile = result.data.profile;
+      this.notifyListeners();
+      return { success: true, user: result.data.profile };
     } catch (err: any) {
-      return { success: false, error: err.message };
+      if (auth) await signOut(auth);
+      this.currentProfile = null;
+      this.notifyListeners();
+      const errMsg = err.message || '';
+      if (errMsg.includes('UNDER_14') || errMsg.includes('만 14세 미만')) {
+        return { success: false, error: 'UNDER_14_BLOCKED: 만 14세 미만은 법정대리인 동의 없이 회원가입이 불가능합니다.' };
+      }
+      return { success: false, error: errMsg || '나이 인증 완료 중 오류가 발생했습니다.' };
     }
   }
 
   public async logout(): Promise<void> {
-    if (isFirebaseConfigured && auth) {
-      await signOut(auth);
-    }
-    this.setCurrentProfile(null);
+    if (auth) await signOut(auth);
+    this.currentProfile = null;
+    this.notifyListeners();
   }
 
   public async toggleFavoriteArtist(artistId: string): Promise<boolean> {
     if (!this.currentProfile) return false;
-    const current = this.currentProfile.favoriteArtistIds || [];
-    const isFav = current.includes(artistId);
-    const updated = isFav ? current.filter(id => id !== artistId) : [...current, artistId];
-
-    this.currentProfile.favoriteArtistIds = updated;
-    this.setCurrentProfile({ ...this.currentProfile });
-
-    if (isFirebaseConfigured && db && this.currentProfile.uid) {
-      try {
-        await updateDoc(doc(db, 'users', this.currentProfile.uid), {
-          favoriteArtistIds: updated
-        });
-      } catch (err) {
-        console.warn('[UserService] Update favorites error:', err);
-      }
-    }
+    const currentFavs = this.currentProfile.favoriteArtistIds || [];
+    const isFav = currentFavs.includes(artistId);
+    const nextFavs = isFav ? currentFavs.filter(id => id !== artistId) : [...currentFavs, artistId];
+    this.currentProfile = { ...this.currentProfile, favoriteArtistIds: nextFavs };
+    this.notifyListeners();
     return !isFav;
   }
 
   public async updateNotificationPrefs(prefs: UserNotificationPrefs): Promise<void> {
     if (!this.currentProfile) return;
-    this.currentProfile.notificationPrefs = prefs;
-    this.setCurrentProfile({ ...this.currentProfile });
-
-    if (isFirebaseConfigured && db && this.currentProfile.uid) {
-      try {
-        await updateDoc(doc(db, 'users', this.currentProfile.uid), {
-          notificationPrefs: prefs
-        });
-      } catch (err) {
-        console.warn('[UserService] Update prefs error:', err);
-      }
-    }
+    this.currentProfile = { ...this.currentProfile, notificationPrefs: prefs };
+    this.notifyListeners();
   }
 
   public async unsubscribeByToken(uid: string): Promise<void> {
     if (this.currentProfile && this.currentProfile.uid === uid) {
       this.currentProfile.notificationPrefs.emailEnabled = false;
-      this.setCurrentProfile({ ...this.currentProfile });
+      this.notifyListeners();
     }
-    if (isFirebaseConfigured && db) {
-      try {
-        await updateDoc(doc(db, 'users', uid), {
-          'notificationPrefs.emailEnabled': false
-        });
-      } catch (err) {
-        console.warn('[UserService] Unsubscribe error:', err);
-      }
-    }
-  }
-
-  public loginDemoUser(displayName = 'K-POP 열정팬'): UserProfile {
-    const demo: UserProfile = {
-      uid: 'demo_user_2026',
-      email: 'demo@kpop-tour.com',
-      displayName,
-      favoriteArtistIds: ['bigbang-gd', 'bts'],
-      ageVerified: true,
-      ageVerifiedAt: new Date().toISOString(),
-      notificationPrefs: {
-        emailEnabled: false,
-        ticketOpen: true,
-        statusChange: true,
-        language: 'ko'
-      }
-    };
-    this.setCurrentProfile(demo);
-    return demo;
   }
 }
 
