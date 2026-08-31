@@ -89,3 +89,16 @@
   1. 클라이언트 직접 `setDoc`을 `firestore.rules` 상에서 `allow create: if false;`로 완전 차단.
   2. 서버 사이드 `completeSignup` Cloud Function 신규 구축: 서버에서 만 14세 엄격 검증, 만 14세 미만 시 Auth 계정 즉시 삭제 및 차단, 만 14세 이상 시 Admin SDK로 안전하게 `users/{uid}` 생성.
   3. 관리자 계정 `2021.untact@gmail.com`에 `admin: true` 커스텀 클레임 공식 발급 완료.
+---
+
+## ADR-013: 상태 필드 절대 우선순위(Date Lifecycle Engine) 및 RSS 팩트-이벤트 동기화 브릿지
+- **상태**: 승인됨 (Accepted)
+- **일자**: 2026-08-31
+- **내용**:
+  1. **상태 필드 우선순위 확립**:
+     - `eventDate < 오늘(UTC)` ➔ `completed` (최종 권위, 모든 값 오버라이드).
+     - `eventDate === 오늘(UTC)` ➔ `inProgress`.
+     - `eventDate > 오늘(UTC)` ➔ `ticketOpen` 또는 `scheduled`.
+  2. **동적 계산 엔진**: 클라이언트 렌더링 시 및 백엔드 매시간 스케줄러를 통해 날짜 지난 공연 자동 완료 처리.
+  3. **RSS 브릿지**: `ticketOpen` 뉴스 승인 시 해당 미래 공연의 `status`를 `ticketOpen`으로 자동 동기화하며, 과거 공연일 경우 부활 방지(`rss-bridge-skipped-stale`) 차단.
+  4. **알려진 한계(MVP)**: 시간대(Timezone)는 UTC 기준 비교로 작동하며, 공연장 현지 자정과의 최대 12시간 오차는 MVP 허용 범위로 정의.

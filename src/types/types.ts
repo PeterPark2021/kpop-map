@@ -33,17 +33,11 @@ export interface TourEvent {
   [key: string]: any;
 }
 
-export interface ArtistProfile {
-  artistId: string;
-  name: LocalizedString;
-  description?: LocalizedString;
-  anchorCity?: LocalizedString;
-  totalShows?: number;
-  statusText?: LocalizedString;
-  imageUrl?: string;
-  accentColor?: string;
-  isAnchor?: boolean;
-  [key: string]: any;
+export interface ExtractedSignal {
+  signalType: 'ticketOpen' | 'dateChange' | 'venueChange' | 'none';
+  mentionedCity: string | null;
+  mentionedVenue: string | null;
+  relatedEventId: string | null;
 }
 
 export interface TourNewsFact {
@@ -63,6 +57,30 @@ export interface TourNewsFact {
   reviewStatus: ReviewStatus;
   rejectionReason?: string;
   verificationConfidence?: number;
+  extractedSignal?: ExtractedSignal;
+  [key: string]: any;
+}
+
+export interface EventLifecycleLog {
+  logId: string;
+  eventId: string;
+  previousStatus: string;
+  newStatus: string;
+  reason: 'date-based-auto' | 'rss-bridge' | 'rss-bridge-skipped-stale' | 'admin-manual';
+  sourceNewsId?: string;
+  changedAt: string;
+}
+
+export interface ArtistProfile {
+  artistId: string;
+  name: LocalizedString;
+  description?: LocalizedString;
+  anchorCity?: LocalizedString;
+  totalShows?: number;
+  statusText?: LocalizedString;
+  imageUrl?: string;
+  accentColor?: string;
+  isAnchor?: boolean;
   [key: string]: any;
 }
 
@@ -115,7 +133,6 @@ export interface UserProfile {
   notificationPrefs: UserNotificationPrefs;
 }
 
-// 📡 RSS 확장 모델 (v2.0)
 export interface RssFeedSource {
   sourceId: string;
   name: string;
@@ -124,7 +141,7 @@ export interface RssFeedSource {
   feedUrl: string;
   siteUrl: string;
   isOfficial: boolean;
-  reliabilityWeight: number; // 0.0 ~ 1.0
+  reliabilityWeight: number;
   category: 'agency' | 'global_media' | 'ticketing';
   lastFetchedAt?: string;
   status: 'active' | 'inactive' | 'error';
